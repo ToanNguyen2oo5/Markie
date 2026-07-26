@@ -1,3 +1,23 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /profile
 spring:
   application:
-    name: profile
+    name: profile-service
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: 12345678
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8280/realms/markie
+
+# Keycloak Identity Provider configuration
+idp:
+  url: http://localhost:8280
+  client-id: markie_app
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:HcyQMNwdn6x8jQ85rvBTeoK0eEPkiJdP}
