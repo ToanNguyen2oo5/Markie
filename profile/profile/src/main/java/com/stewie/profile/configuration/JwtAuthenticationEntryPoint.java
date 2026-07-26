@@ -1,4 +1,4 @@
-package com.devteria.profile.configuration;
+package com.stewie.profile.configuration;
 
 import java.io.IOException;
 
@@ -9,9 +9,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 
-import com.devteria.profile.dto.ApiResponse;
-import com.devteria.profile.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stewie.profile.dto.ApiResponse;
+import com.stewie.profile.exception.ErrorCode;
 
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     private final ObjectMapper objectMapper = new ObjectMapper();

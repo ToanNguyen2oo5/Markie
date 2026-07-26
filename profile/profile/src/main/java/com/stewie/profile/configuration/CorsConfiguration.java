@@ -1,4 +1,4 @@
-package com.devteria.profile.configuration;
+package com.stewie.profile.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

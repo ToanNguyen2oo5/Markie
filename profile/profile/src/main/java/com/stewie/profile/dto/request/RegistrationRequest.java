@@ -1,4 +1,4 @@
-package com.devteria.profile.dto.request;
+package com.stewie.profile.dto.request;
 
 import java.time.LocalDate;
 
@@ -6,11 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Data

@@ -1,4 +1,4 @@
-package com.devteria.profile.exception;
+package com.stewie.profile.exception;
 
 import java.util.Map;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import com.devteria.profile.dto.ApiResponse;
+import com.stewie.profile.dto.ApiResponse;
 
 import lombok.extern.slf4j.Slf4j;
 

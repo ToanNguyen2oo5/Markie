@@ -1,10 +1,6 @@
-package com.devteria.profile.dto.identity;
+package com.stewie.profile.dto.identity;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Data
@@ -17,4 +13,6 @@ public class TokenExchangeParam {
     String client_id;
     String client_secret;
     String scope;
+    String username;
+    String password;
 }

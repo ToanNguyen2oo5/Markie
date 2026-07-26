@@ -1,4 +1,4 @@
-package com.devteria.profile.exception;
+package com.stewie.profile.exception;
 
 public class AppException extends RuntimeException {
 
