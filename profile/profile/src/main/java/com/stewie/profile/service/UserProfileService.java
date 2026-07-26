@@ -84,7 +84,7 @@ public class UserProfileService {
         userProfile.setUserId(userId);
 
         userProfile = userProfileRepository.save(userProfile);
-        log.info("UserProfile saved in Neo4j with id: {}", userProfile.getId());
+        log.info("UserProfile saved in Neo4j with id: {}", userProfile.getProfileId());
 
         return userProfileMapper.toProfileResponse(userProfile);
     }

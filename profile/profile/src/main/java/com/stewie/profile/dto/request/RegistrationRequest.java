@@ -27,4 +27,6 @@ public class RegistrationRequest {
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     LocalDate dob;
+
+    String city;
 }
