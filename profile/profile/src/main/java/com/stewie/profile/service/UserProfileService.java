@@ -17,10 +17,12 @@ import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
 import com.stewie.profile.exception.AppException;
 import com.stewie.profile.exception.ErrorCode;
+import com.stewie.profile.exception.ErrorNormalizer;
 import com.stewie.profile.mapper.UserProfileMapper;
 import com.stewie.profile.repository.UserProfileRepository;
 import com.stewie.profile.repository.httpclient.IdentityClient;
 
+import feign.FeignException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -36,6 +38,7 @@ public class UserProfileService {
     IdentityClient identityClient;
     UserProfileRepository userProfileRepository;
     UserProfileMapper userProfileMapper;
+    ErrorNormalizer errorNormalizer;
 
     @NonFinal
     @Value("${idp.client-id}")
@@ -54,7 +57,12 @@ public class UserProfileService {
                 .scope("openid")
                 .build();
 
-        TokenExchangeResponse tokenResponse = identityClient.exchangeToken(tokenParam);
+        TokenExchangeResponse tokenResponse;
+        try {
+            tokenResponse = identityClient.exchangeToken(tokenParam);
+        } catch (FeignException e) {
+            throw errorNormalizer.handleKeyCloakException(e);
+        }
         log.info("Token exchange successful");
 
         // Step 2: Create user on Keycloak
@@ -72,8 +80,12 @@ public class UserProfileService {
                         .build()))
                 .build();
 
-        ResponseEntity<?> creationResponse =
-                identityClient.createUser("Bearer " + tokenResponse.getAccessToken(), userCreationParam);
+        ResponseEntity<?> creationResponse;
+        try {
+            creationResponse = identityClient.createUser("Bearer " + tokenResponse.getAccessToken(), userCreationParam);
+        } catch (FeignException e) {
+            throw errorNormalizer.handleKeyCloakException(e);
+        }
 
         // Step 3: Extract userId from Keycloak response Location header
         String userId = extractUserId(creationResponse);
@@ -99,7 +111,11 @@ public class UserProfileService {
                 .scope("openid")
                 .build();
 
-        return identityClient.exchangeToken(tokenParam);
+        try {
+            return identityClient.exchangeToken(tokenParam);
+        } catch (FeignException e) {
+            throw errorNormalizer.handleKeyCloakException(e);
+        }
     }
 
     public ProfileResponse getMyProfile() {
