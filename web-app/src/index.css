@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #09090b;
+    color: #f4f4f5;
+    overflow-x: hidden;
+  }
+}
+
+/* Liquid Glass & Refraction Utilities */
+.liquid-glass {
+  background: rgba(18, 18, 23, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+}
+
+.liquid-glass-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-hover:hover {
+  background: rgba(24, 24, 31, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* Subtle Shimmer for Skeleton & Active Indicators */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite linear;
+}
+
+/* Custom Scrollbar for Token / Inspection Panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(9, 9, 11, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(39, 39, 42, 0.8);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(63, 63, 70, 1);
+}
