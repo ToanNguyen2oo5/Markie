@@ -2,14 +2,9 @@ package com.stewie.profile.controller;
 
 import java.util.List;
 
-import jakarta.validation.Valid;
-
 import org.springframework.web.bind.annotation.*;
 
 import com.stewie.profile.dto.ApiResponse;
-import com.stewie.profile.dto.identity.TokenExchangeResponse;
-import com.stewie.profile.dto.request.LoginRequest;
-import com.stewie.profile.dto.request.RegistrationRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.service.UserProfileService;
 
@@ -24,17 +19,15 @@ public class UserProfileController {
 
     UserProfileService userProfileService;
 
-    @PostMapping("/internal/registration")
-    ApiResponse<ProfileResponse> register(@RequestBody @Valid RegistrationRequest request) {
+    /**
+     * Sync profile from JWT claims.
+     * Called by Frontend after successful Keycloak login/register.
+     * Creates UserProfile in Neo4j if it doesn't exist yet.
+     */
+    @PostMapping("/users/sync-profile")
+    ApiResponse<ProfileResponse> syncProfile() {
         return ApiResponse.<ProfileResponse>builder()
-                .result(userProfileService.register(request))
-                .build();
-    }
-
-    @PostMapping("/internal/login")
-    ApiResponse<TokenExchangeResponse> login(@RequestBody @Valid LoginRequest request) {
-        return ApiResponse.<TokenExchangeResponse>builder()
-                .result(userProfileService.login(request))
+                .result(userProfileService.syncProfile())
                 .build();
     }
 

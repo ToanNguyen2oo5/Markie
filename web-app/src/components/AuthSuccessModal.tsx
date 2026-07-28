@@ -1,53 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-  User, 
   SignOut,
   EnvelopeSimple,
   Calendar,
-  Image
+  Image,
+  MapPin
 } from '@phosphor-icons/react';
 
 interface AuthSuccessModalProps {
-  authData: any; // TokenExchangeResponse or ProfileResponse
-  apiBaseUrl: string;
+  profileData: any;
+  keycloakToken: string;
   onLogout: () => void;
 }
 
 export const AuthSuccessModal: React.FC<AuthSuccessModalProps> = ({
-  authData,
-  apiBaseUrl,
+  profileData,
+  keycloakToken,
   onLogout,
 }) => {
-  const [profile, setProfile] = useState<any>(authData.username ? authData : null);
-  const [loading, setLoading] = useState(!authData.username);
-
-  // Extract access token if available
-  const accessToken = authData.accessToken || authData.access_token || '';
-
-  useEffect(() => {
-    // If we only got tokens (from login), fetch the actual profile
-    if (!profile && accessToken) {
-      const fetchProfile = async () => {
-        try {
-          const response = await fetch(`${apiBaseUrl}/profile/users/my-profile`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          });
-          const data = await response.json();
-          if (response.ok && data.code === 1000) {
-            setProfile(data.result);
-          }
-        } catch (err) {
-          console.error("Failed to fetch profile", err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchProfile();
-    }
-  }, [accessToken, apiBaseUrl, profile]);
+  const profile = profileData;
 
   return (
     <div className="liquid-glass rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl border border-zinc-800/80">
@@ -71,15 +42,7 @@ export const AuthSuccessModal: React.FC<AuthSuccessModalProps> = ({
       </div>
 
       {/* Profile Card */}
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="animate-pulse flex flex-col items-center space-y-4">
-            <div className="w-20 h-20 bg-zinc-800 rounded-full"></div>
-            <div className="w-32 h-4 bg-zinc-800 rounded"></div>
-            <div className="w-24 h-3 bg-zinc-800 rounded"></div>
-          </div>
-        </div>
-      ) : profile ? (
+      {profile ? (
         <div className="space-y-6">
           <div className="flex flex-col items-center justify-center pt-2">
             <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-emerald-400 p-1 mb-4 shadow-xl shadow-blue-500/20">
@@ -94,14 +57,22 @@ export const AuthSuccessModal: React.FC<AuthSuccessModalProps> = ({
           </div>
 
           <div className="bg-zinc-900/60 rounded-2xl border border-zinc-800 p-4 space-y-3">
-            <div className="flex items-center space-x-3 text-zinc-300">
-              <EnvelopeSimple className="w-5 h-5 text-zinc-500" />
-              <span>{profile.email}</span>
-            </div>
+            {profile.email && (
+              <div className="flex items-center space-x-3 text-zinc-300">
+                <EnvelopeSimple className="w-5 h-5 text-zinc-500" />
+                <span>{profile.email}</span>
+              </div>
+            )}
             {profile.dob && (
               <div className="flex items-center space-x-3 text-zinc-300">
                 <Calendar className="w-5 h-5 text-zinc-500" />
                 <span>Sinh nhật: {profile.dob}</span>
+              </div>
+            )}
+            {profile.address && (
+              <div className="flex items-center space-x-3 text-zinc-300">
+                <MapPin className="w-5 h-5 text-zinc-500" />
+                <span>Địa chỉ: {profile.address}</span>
               </div>
             )}
           </div>

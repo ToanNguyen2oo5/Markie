@@ -30,10 +30,14 @@ public class UserProfile {
     String avatar;
 
     String username;
+
     String email;
 
     String firstName;
+
     String lastName;
+
     LocalDate dob;
     String city;
+    String address;
 }

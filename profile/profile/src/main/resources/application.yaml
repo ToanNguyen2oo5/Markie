@@ -15,9 +15,3 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8280/realms/markie
-
-# Keycloak Identity Provider configuration
-idp:
-  url: http://localhost:8280
-  client-id: markie_app
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:HcyQMNwdn6x8jQ85rvBTeoK0eEPkiJdP}

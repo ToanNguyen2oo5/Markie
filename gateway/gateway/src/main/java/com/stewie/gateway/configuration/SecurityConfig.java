@@ -15,11 +15,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
                 .authorizeExchange(exchanges -> exchanges
-                        // Public endpoints — registration and login do not require authentication
-                        .pathMatchers(
-                                "/profile/internal/**"
-                        ).permitAll()
-                        // All other routes require authentication
+                        // All routes require authentication (JWT from Keycloak)
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))

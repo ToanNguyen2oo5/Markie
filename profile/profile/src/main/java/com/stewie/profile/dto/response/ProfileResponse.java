@@ -22,4 +22,7 @@ public class ProfileResponse {
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     LocalDate dob;
+
+    String city;
+    String address;
 }

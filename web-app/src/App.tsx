@@ -1,39 +1,85 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import keycloak from './keycloak';
 import { Navbar } from './components/Navbar';
 import { BentoShowcase } from './components/BentoShowcase';
-import { LoginForm } from './components/LoginForm';
-import { RegisterForm } from './components/RegisterForm';
 import { AuthSuccessModal } from './components/AuthSuccessModal';
-import { KeycloakConfigModal } from './components/KeycloakConfigModal';
-import { LockKey, Sparkle } from '@phosphor-icons/react';
+import { LockKey, Sparkle, Spinner } from '@phosphor-icons/react';
 
 export function App() {
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  // Mặc định gọi qua Gateway proxy
-  const apiBaseUrl = '';
-  const [authData, setAuthData] = useState<any | null>(null);
+  const [keycloakReady, setKeycloakReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [profileData, setProfileData] = useState<any | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [serverConnected, setServerConnected] = useState(true);
 
-  // Check health status of backend
+  // Initialize Keycloak
   useEffect(() => {
-    const checkServerHealth = async () => {
-      try {
-        const res = await fetch(`${apiBaseUrl}/profile/internal/login`, {
-          method: 'OPTIONS',
-        }).catch(() => null);
-        // If fetch didn't throw network error, server is reachable
-        setServerConnected(res !== null);
-      } catch (e) {
+    keycloak
+      .init({ onLoad: 'check-sso', checkLoginIframe: false })
+      .then((auth) => {
+        setKeycloakReady(true);
+        setAuthenticated(auth);
+        if (auth) {
+          setServerConnected(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Keycloak init failed:', err);
+        setKeycloakReady(true);
         setServerConnected(false);
+      });
+  }, []);
+
+  // Sync profile after authentication
+  const syncProfile = useCallback(async () => {
+    if (!keycloak.token) return;
+
+    setSyncLoading(true);
+    try {
+      const response = await fetch('/profile/users/sync-profile', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${keycloak.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok && data.code === 1000) {
+        setProfileData(data.result);
+      } else {
+        console.error('Sync profile failed:', data);
       }
-    };
-    checkServerHealth();
-  }, [apiBaseUrl]);
+    } catch (err) {
+      console.error('Sync profile error:', err);
+    } finally {
+      setSyncLoading(false);
+    }
+  }, []);
+
+  // Auto-sync profile when authenticated
+  useEffect(() => {
+    if (authenticated && keycloakReady && !profileData) {
+      syncProfile();
+    }
+  }, [authenticated, keycloakReady, profileData, syncProfile]);
+
+  const handleLogin = () => {
+    keycloak.login();
+  };
+
+  const handleRegister = () => {
+    keycloak.register();
+  };
+
+  const handleLogout = () => {
+    keycloak.logout({ redirectUri: window.location.origin });
+  };
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-blue-500/20 selection:text-blue-300 relative overflow-hidden">
       
-      {/* Background Subtle Ambient Glow (Anti-slop: Neutral Dark Blur, No Neon Purple) */}
+      {/* Background Subtle Ambient Glow */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-blue-900/10 blur-[140px]" />
         <div className="absolute top-[40%] -right-[15%] w-[45vw] h-[45vw] rounded-full bg-cyan-900/10 blur-[160px]" />
@@ -48,68 +94,72 @@ export function App() {
         
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           
-          {/* Left Column (7 cols): Asymmetric Visual Bento Showcase */}
+          {/* Left Column: Bento Showcase */}
           <div className="lg:col-span-7">
             <BentoShowcase />
           </div>
 
-          {/* Right Column (5 cols): Liquid Glass Auth Card */}
+          {/* Right Column: Auth Card */}
           <div className="lg:col-span-5 w-full">
             
-            {authData ? (
-              /* Success State Card */
+            {!keycloakReady ? (
+              /* Loading State */
+              <div className="liquid-glass rounded-3xl p-8 shadow-2xl border border-zinc-800/90 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
+                <Spinner weight="bold" className="w-8 h-8 animate-spin text-blue-400" />
+                <p className="text-sm text-zinc-400">Đang kết nối đến máy chủ xác thực...</p>
+              </div>
+            ) : authenticated && profileData ? (
+              /* Authenticated State — Show Profile */
               <AuthSuccessModal
-                authData={authData}
-                apiBaseUrl={apiBaseUrl}
-                onLogout={() => setAuthData(null)}
+                profileData={profileData}
+                keycloakToken={keycloak.token || ''}
+                onLogout={handleLogout}
               />
+            ) : authenticated && syncLoading ? (
+              /* Syncing Profile */
+              <div className="liquid-glass rounded-3xl p-8 shadow-2xl border border-zinc-800/90 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
+                <Spinner weight="bold" className="w-8 h-8 animate-spin text-emerald-400" />
+                <p className="text-sm text-zinc-400">Đang đồng bộ hồ sơ cá nhân...</p>
+              </div>
             ) : (
-              /* Authentication Forms Container */
+              /* Unauthenticated — Login / Register Buttons */
               <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-2xl relative border border-zinc-800/90 liquid-glass-hover">
                 
-                {/* Form Tab Switcher Header */}
-                <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4 mb-6">
-                  <div className="flex space-x-2 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 text-xs font-medium w-full">
-                    <button
-                      onClick={() => setAuthMode('login')}
-                      className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                        authMode === 'login'
-                          ? 'bg-blue-600 text-white shadow-md font-semibold'
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      <LockKey weight="bold" className="w-4 h-4" />
-                      <span>Đăng nhập</span>
-                    </button>
-
-                    <button
-                      onClick={() => setAuthMode('register')}
-                      className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                        authMode === 'register'
-                          ? 'bg-emerald-600 text-white shadow-md font-semibold'
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      <Sparkle weight="bold" className="w-4 h-4" />
-                      <span>Đăng ký mới</span>
-                    </button>
-                  </div>
+                {/* Header */}
+                <div className="text-center space-y-3 mb-8">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
+                    Chào mừng đến với Markie
+                  </h2>
+                  <p className="text-sm text-zinc-400">
+                    Đăng nhập hoặc tạo tài khoản mới để bắt đầu kết nối
+                  </p>
                 </div>
 
-                {/* Render Selected Form */}
-                {authMode === 'login' ? (
-                  <LoginForm
-                    apiBaseUrl={apiBaseUrl}
-                    onSuccess={(data) => setAuthData(data)}
-                    onSwitchToRegister={() => setAuthMode('register')}
-                  />
-                ) : (
-                  <RegisterForm
-                    apiBaseUrl={apiBaseUrl}
-                    onSuccess={(data) => setAuthData(data)}
-                    onSwitchToLogin={() => setAuthMode('login')}
-                  />
-                )}
+                {/* Auth Buttons */}
+                <div className="space-y-4">
+                  <button
+                    onClick={handleLogin}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center space-x-2.5 active:scale-[0.98] cursor-pointer"
+                  >
+                    <LockKey weight="bold" className="w-5 h-5" />
+                    <span>Đăng nhập</span>
+                  </button>
+
+                  <button
+                    onClick={handleRegister}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2.5 active:scale-[0.98] cursor-pointer"
+                  >
+                    <Sparkle weight="bold" className="w-5 h-5" />
+                    <span>Đăng ký tài khoản mới</span>
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="mt-6 pt-4 border-t border-zinc-800/60 text-center">
+                  <p className="text-xs text-zinc-500">
+                    Bạn sẽ được chuyển hướng đến trang xác thực an toàn
+                  </p>
+                </div>
 
               </div>
             )}
@@ -119,7 +169,6 @@ export function App() {
         </div>
 
       </main>
-
 
       {/* Footer */}
       <footer className="border-t border-zinc-900 bg-zinc-950/80 py-4 z-10">

@@ -1,32 +1,23 @@
 package com.stewie.profile.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
-import com.stewie.profile.dto.identity.Credential;
-import com.stewie.profile.dto.identity.TokenExchangeParam;
-import com.stewie.profile.dto.identity.TokenExchangeResponse;
-import com.stewie.profile.dto.identity.UserCreationParam;
-import com.stewie.profile.dto.request.LoginRequest;
-import com.stewie.profile.dto.request.RegistrationRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
 import com.stewie.profile.exception.AppException;
 import com.stewie.profile.exception.ErrorCode;
-import com.stewie.profile.exception.ErrorNormalizer;
 import com.stewie.profile.mapper.UserProfileMapper;
 import com.stewie.profile.repository.UserProfileRepository;
-import com.stewie.profile.repository.httpclient.IdentityClient;
 
-import feign.FeignException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -35,87 +26,65 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UserProfileService {
 
-    IdentityClient identityClient;
     UserProfileRepository userProfileRepository;
     UserProfileMapper userProfileMapper;
-    ErrorNormalizer errorNormalizer;
 
-    @NonFinal
-    @Value("${idp.client-id}")
-    String clientId;
+    /**
+     * Sync profile from JWT claims (Keycloak).
+     * If UserProfile already exists for this userId, return existing.
+     * Otherwise, create a new one from JWT claims including custom attributes (dob, address).
+     */
+    public ProfileResponse syncProfile() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-    @NonFinal
-    @Value("${idp.client-secret}")
-    String clientSecret;
-
-    public ProfileResponse register(RegistrationRequest request) {
-        // Step 1: Get admin token via client_credentials grant
-        TokenExchangeParam tokenParam = TokenExchangeParam.builder()
-                .grant_type("client_credentials")
-                .client_id(clientId)
-                .client_secret(clientSecret)
-                .scope("openid")
-                .build();
-
-        TokenExchangeResponse tokenResponse;
-        try {
-            tokenResponse = identityClient.exchangeToken(tokenParam);
-        } catch (FeignException e) {
-            throw errorNormalizer.handleKeyCloakException(e);
-        }
-        log.info("Token exchange successful");
-
-        // Step 2: Create user on Keycloak
-        UserCreationParam userCreationParam = UserCreationParam.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .enabled(true)
-                .emailVerified(false)
-                .credentials(List.of(Credential.builder()
-                        .type("password")
-                        .value(request.getPassword())
-                        .temporary(false)
-                        .build()))
-                .build();
-
-        ResponseEntity<?> creationResponse;
-        try {
-            creationResponse = identityClient.createUser("Bearer " + tokenResponse.getAccessToken(), userCreationParam);
-        } catch (FeignException e) {
-            throw errorNormalizer.handleKeyCloakException(e);
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // Step 3: Extract userId from Keycloak response Location header
-        String userId = extractUserId(creationResponse);
-        log.info("User created on Keycloak with userId: {}", userId);
+        Jwt jwt = jwtAuth.getToken();
+        String userId = jwt.getSubject();
 
-        // Step 4: Create UserProfile in Neo4j
-        UserProfile userProfile = userProfileMapper.toUserProfile(request);
-        userProfile.setUserId(userId);
+        // Check if profile already exists
+        var existing = userProfileRepository.findByUserId(userId);
+        if (existing.isPresent()) {
+            log.info("Profile already exists for userId: {}", userId);
+            return userProfileMapper.toProfileResponse(existing.get());
+        }
 
-        userProfile = userProfileRepository.save(userProfile);
-        log.info("UserProfile saved in Neo4j with id: {}", userProfile.getProfileId());
+        // Extract standard claims
+        String username = jwt.getClaimAsString("preferred_username");
+        String email = jwt.getClaimAsString("email");
+        String firstName = jwt.getClaimAsString("given_name");
+        String lastName = jwt.getClaimAsString("family_name");
 
-        return userProfileMapper.toProfileResponse(userProfile);
-    }
+        // Extract custom Keycloak attributes (dob, address)
+        LocalDate dob = null;
+        String dobStr = jwt.getClaimAsString("dob");
+        if (dobStr != null && !dobStr.isBlank()) {
+            try {
+                dob = LocalDate.parse(dobStr);
+            } catch (Exception e) {
+                log.warn("Failed to parse dob claim '{}': {}", dobStr, e.getMessage());
+            }
+        }
 
-    public TokenExchangeResponse login(LoginRequest request) {
-        TokenExchangeParam tokenParam = TokenExchangeParam.builder()
-                .grant_type("password")
-                .client_id(clientId)
-                .client_secret(clientSecret)
-                .username(request.getUsername())
-                .password(request.getPassword())
-                .scope("openid")
+        String address = jwt.getClaimAsString("address");
+
+        // Create new profile
+        UserProfile profile = UserProfile.builder()
+                .userId(userId)
+                .username(username)
+                .email(email)
+                .firstName(firstName)
+                .lastName(lastName)
+                .dob(dob)
+                .address(address)
                 .build();
 
-        try {
-            return identityClient.exchangeToken(tokenParam);
-        } catch (FeignException e) {
-            throw errorNormalizer.handleKeyCloakException(e);
-        }
+        profile = userProfileRepository.save(profile);
+        log.info("New UserProfile created for userId: {}, profileId: {}", userId, profile.getProfileId());
+
+        return userProfileMapper.toProfileResponse(profile);
     }
 
     public ProfileResponse getMyProfile() {
@@ -141,13 +110,5 @@ public class UserProfileService {
         return userProfileRepository.findAll().stream()
                 .map(userProfileMapper::toProfileResponse)
                 .toList();
-    }
-
-    private String extractUserId(ResponseEntity<?> response) {
-        // Keycloak returns the user ID in the Location header:
-        // http://localhost:8280/admin/realms/markie/users/{userId}
-        String location = response.getHeaders().get("Location").getFirst();
-        String[] parts = location.split("/");
-        return parts[parts.length - 1];
     }
 }

@@ -21,8 +21,8 @@ public class WebClientConfiguration {
     private String idpUrl;
 
     @Bean
-    WebClient webClient() {
-        return WebClient.builder()
+    WebClient webClient(WebClient.Builder builder) {
+        return builder
                 .baseUrl(idpUrl)
                 .build();
     }
