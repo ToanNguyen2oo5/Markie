@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 
+import com.stewie.profile.dto.request.UpdateProfileRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
 import com.stewie.profile.exception.AppException;
@@ -110,5 +111,17 @@ public class UserProfileService {
         return userProfileRepository.findAll().stream()
                 .map(userProfileMapper::toProfileResponse)
                 .toList();
+    }
+
+    public ProfileResponse updateProfile(UpdateProfileRequest request) {
+        var profileId = getMyProfile().getProfileId();
+
+        var profile = userProfileRepository
+                .findByUserId(profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        userProfileMapper.update(profile, request);
+
+        return userProfileMapper.toProfileResponse(userProfileRepository.save(profile));
     }
 }

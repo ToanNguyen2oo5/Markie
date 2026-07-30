@@ -9,7 +9,6 @@ import java.util.Map;
 
 @HttpExchange
 public interface IdentityClient {
-
     /**
      * Gọi Keycloak's OIDC /userinfo endpoint để lấy thông tin user từ Bearer Token.
      * Endpoint này cũng hoạt động như một cách xác minh token còn hợp lệ hay không.

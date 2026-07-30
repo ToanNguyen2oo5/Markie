@@ -16,6 +16,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8280/realms/markie
+          jwk-set-uri: http://localhost:8280/realms/markie/protocol/openid-connect/certs
 
 idp:
   url: http://localhost:8280
