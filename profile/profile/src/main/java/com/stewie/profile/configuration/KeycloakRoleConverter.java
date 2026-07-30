@@ -44,7 +44,8 @@ public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedA
             return Collections.emptyList();
         }
 
-        List<String> roles = jwt.getClaimAsStringList(ROLES_CLAIM);
+        @SuppressWarnings("unchecked")
+        List<String> roles = (List<String>) realmAccess.get(ROLES_CLAIM);
         if (roles == null || roles.isEmpty()) {
             return Collections.emptyList();
         }

@@ -14,18 +14,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-/**
- * REST controller for user profile operations.
- *
- * <p>Fine-grained RBAC is enforced at the method level via {@code @PreAuthorize},
- * building on top of the coarse-grained route protection already applied at the Gateway.
- *
- * <p>Role mapping (Keycloak Realm Roles → Spring Authorities):
- * <ul>
- *   <li>{@code ADMIN} → {@code ROLE_ADMIN} (full management access)</li>
- *   <li>{@code USER}  → {@code ROLE_USER}  (self-service access only)</li>
- * </ul>
- */
 @RestController
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -41,10 +29,6 @@ public class UserProfileController {
                 .build();
     }
 
-    /**
-     * Get the currently authenticated user's own profile.
-     * Both ADMIN and USER roles can view their own profile.
-     */
     @GetMapping("/users/my-profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> getMyProfile() {
@@ -53,10 +37,6 @@ public class UserProfileController {
                 .build();
     }
 
-    /**
-     * Update the currently authenticated user's own profile.
-     * Both ADMIN and USER roles can update their own profile.
-     */
     @PutMapping("/users/my-profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> updateMyProfile(@RequestBody UpdateProfileRequest request) {
@@ -65,10 +45,6 @@ public class UserProfileController {
                 .build();
     }
 
-    /**
-     * Get any user's profile by ID.
-     * Only ADMIN can look up arbitrary profiles; a USER cannot access other users' profiles.
-     */
     @GetMapping("/users/{profileId}")
     @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<ProfileResponse> getProfile(@PathVariable String profileId) {
