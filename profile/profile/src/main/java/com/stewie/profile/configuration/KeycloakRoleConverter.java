@@ -10,26 +10,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-/**
- * Keycloak JWT → GrantedAuthority converter for Spring MVC (Servlet / Blocking).
- *
- * <p>Keycloak embeds roles inside the JWT under:
- * <pre>
- *   {
- *     "realm_access": {
- *       "roles": ["ADMIN", "USER", ...]
- *     }
- *   }
- * </pre>
- * Spring Security's default converter only processes the {@code scope} claim,
- * resulting in authorities like {@code SCOPE_openid}. This converter additionally
- * extracts {@code realm_access.roles} and maps each role to a
- * {@link SimpleGrantedAuthority} with the {@code ROLE_} prefix, enabling
- * method-level security annotations such as {@code @PreAuthorize("hasRole('ADMIN')")}.
- *
- * <p>Strategy: <b>Offline JWT Validation</b> — roles are read directly from the
- * already-verified JWT payload; no additional Keycloak network call is made.
- */
 public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
 
     private static final String REALM_ACCESS_CLAIM = "realm_access";
