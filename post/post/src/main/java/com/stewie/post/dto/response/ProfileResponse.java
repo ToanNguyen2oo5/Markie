@@ -1,11 +1,10 @@
-package com.stewie.profile.dto.response;
-
-import java.time.LocalDate;
-
-import org.springframework.format.annotation.DateTimeFormat;
+package com.stewie.post.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor

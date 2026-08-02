@@ -1,7 +1,15 @@
-package com.stewie.profile.exception;
+package com.stewie.post.exception;
 
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
+@Data
+@Builder
+@NoArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AppException extends RuntimeException {
 
     public AppException(ErrorCode errorCode) {

@@ -31,6 +31,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/profile/internal/login"
     );
 
+    // These paths are only for internal service-to-service calls; block from external clients
+    private static final List<String> INTERNAL_ENDPOINTS = List.of(
+            "/profile/internal/users",
+            "/post/internal"
+    );
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -39,6 +45,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
 
         log.info("Gateway routing request to: {}", path);
+
+        // Block internal endpoints from external clients
+        if (isInternalEndpoint(path)) {
+            log.warn("Blocked external access to internal endpoint: {}", path);
+            return forbiddenResponse(exchange.getResponse());
+        }
 
         // Skip authentication check for public endpoints
         if (isPublicEndpoint(path)) {
@@ -62,6 +74,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
     }
 
+    private boolean isInternalEndpoint(String path) {
+        return INTERNAL_ENDPOINTS.stream().anyMatch(path::startsWith);
+    }
+
     private Mono<Void> unauthenticatedResponse(ServerHttpResponse response) {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -77,6 +93,25 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {
             log.error("Error writing unauthenticated response", e);
+            return response.setComplete();
+        }
+    }
+
+    private Mono<Void> forbiddenResponse(ServerHttpResponse response) {
+        response.setStatusCode(HttpStatus.FORBIDDEN);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+        ApiResponse<?> body = ApiResponse.builder()
+                .code(1007)
+                .message("Access to internal endpoints is forbidden")
+                .build();
+
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(body);
+            DataBuffer buffer = response.bufferFactory().wrap(bytes);
+            return response.writeWith(Mono.just(buffer));
+        } catch (JsonProcessingException e) {
+            log.error("Error writing forbidden response", e);
             return response.setComplete();
         }
     }

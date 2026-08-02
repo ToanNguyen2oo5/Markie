@@ -1,26 +1,23 @@
-package com.stewie.post.entity;
+package com.stewie.post.dto.response;
 
+import com.stewie.post.entity.PostStats;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "posts")
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Post {
-    @MongoId
-    @Field("post_id")
+public class PostResponse {
     String id;
 
-    @Field("user_id")
     String userId;
+
+    String username;
 
     String content;
 

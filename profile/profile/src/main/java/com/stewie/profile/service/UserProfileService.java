@@ -107,6 +107,14 @@ public class UserProfileService {
         return userProfileMapper.toProfileResponse(userProfile);
     }
 
+    // UserProfileService.java
+    public ProfileResponse getProfileByUserId(String userId) {
+        UserProfile userProfile = userProfileRepository
+                .findByUserId(userId) // ← tìm theo userId Keycloak
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+        return userProfileMapper.toProfileResponse(userProfile);
+    }
+
     public List<ProfileResponse> getAllProfiles() {
         return userProfileRepository.findAll().stream()
                 .map(userProfileMapper::toProfileResponse)

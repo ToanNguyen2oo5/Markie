@@ -8,6 +8,11 @@ spring:
   data:
     mongodb:
       uri: mongodb://root:root@localhost:27018/post-service?authSource=admin
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8280/realms/markie
 
 app:
   services:
