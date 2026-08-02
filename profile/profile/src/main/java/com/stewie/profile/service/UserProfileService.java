@@ -121,11 +121,12 @@ public class UserProfileService {
                 .toList();
     }
 
-    public ProfileResponse updateProfile(UpdateProfileRequest request) {
-        var profileId = getMyProfile().getProfileId();
+    public ProfileResponse updateMyProfile(UpdateProfileRequest request) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
 
         var profile = userProfileRepository
-                .findByUserId(profileId)
+                .findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         userProfileMapper.update(profile, request);

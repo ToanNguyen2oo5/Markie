@@ -15,6 +15,10 @@ export default defineConfig({
       '/profile': {
         target: 'http://localhost:8888',
         changeOrigin: true,
+      },
+      '/post': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
       }
     }
   }

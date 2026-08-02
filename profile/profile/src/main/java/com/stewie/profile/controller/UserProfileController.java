@@ -41,7 +41,7 @@ public class UserProfileController {
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> updateMyProfile(@RequestBody UpdateProfileRequest request) {
         return ApiResponse.<ProfileResponse>builder()
-                .result(userProfileService.updateProfile(request))
+                .result(userProfileService.updateMyProfile(request))
                 .build();
     }
 

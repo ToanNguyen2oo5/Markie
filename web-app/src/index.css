@@ -58,3 +58,20 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(63, 63, 70, 1);
 }
+
+/* Custom scrollbar for Facebook feed sidebars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4E4F50;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  opacity: 1;
+}
