@@ -6,6 +6,8 @@ import com.stewie.post.dto.response.PostResponse;
 import com.stewie.post.dto.response.ProfileResponse;
 import com.stewie.post.entity.Post;
 import com.stewie.post.entity.PostStats;
+import com.stewie.post.exception.AppException;
+import com.stewie.post.exception.ErrorCode;
 import com.stewie.post.mapper.PostMapper;
 import com.stewie.post.repository.PostRepository;
 import com.stewie.post.repository.httpclient.ProfileClient;
@@ -62,7 +64,8 @@ public class PostService {
         if (cursor == null || cursor.isEmpty()) {
             postSlice = postRepository.findByUserIdOrderByIdDesc(userId, PageRequest.of(0, limit));
         } else {
-            postSlice = postRepository.findByIdLessThanAndUserIdOrderByIdDesc(cursor, userId, PageRequest.of(0, limit));
+            postSlice = postRepository.
+                    findByIdLessThanAndUserIdOrderByIdDesc(cursor, userId, PageRequest.of(0, limit));
         }
 
         List<Post> posts = postSlice.getContent();
@@ -81,5 +84,13 @@ public class PostService {
                 .nextCursor(nextCursor)
                 .hasNext(postSlice.hasNext())
                 .build();
+    }
+
+    public PostResponse getPostById(String postId){
+        Post post =
+                postRepository.findById(postId)
+                    .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+
+        return postMapper.toPostResponse(post);
     }
 }

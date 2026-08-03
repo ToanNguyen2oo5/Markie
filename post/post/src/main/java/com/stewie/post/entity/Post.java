@@ -16,7 +16,6 @@ import java.time.Instant;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Post {
     @MongoId
-    @Field("post_id")
     String id;
 
     @Field("user_id")

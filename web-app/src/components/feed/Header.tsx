@@ -21,7 +21,7 @@ export function Header() {
           <MagnifyingGlass className="absolute left-3 text-[#A8AB81] w-5 h-5" />
           <input 
             type="text" 
-            placeholder="Tìm kiếm trên Facebook" 
+            placeholder="Tìm kiếm tình iu" 
             className="bg-[#3A3B3C] text-[#E4E6EB] placeholder-[#A8AB81] h-10 w-[240px] rounded-full pl-10 pr-4 outline-none focus:w-[280px] transition-all duration-300"
           />
         </div>

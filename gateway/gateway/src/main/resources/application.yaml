@@ -15,6 +15,7 @@ spring:
           uri: http://localhost:8083
           predicates:
             - Path=/post/**
+
   security:
     oauth2:
       resourceserver:

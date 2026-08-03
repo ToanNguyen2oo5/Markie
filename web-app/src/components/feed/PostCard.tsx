@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { DotsThree, GlobeHemisphereWest, ThumbsUp, ChatCircle, ShareFat } from '@phosphor-icons/react';
 import type { PostData } from '../../pages/NewsFeedPage';
+import { CommentModal } from './CommentModal';
 
 interface PostCardProps {
   post: PostData;
@@ -27,6 +29,8 @@ function getAvatarUrl(userId: string): string {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  
   const displayName = post.username ?? 'Người dùng';
   const timeAgo = formatTime(post.createdDate);
 
@@ -70,16 +74,31 @@ export function PostCard({ post }: PostCardProps) {
       {/* Action Buttons */}
       <div className="p-1 px-4 flex items-center justify-between gap-1">
         <ActionButton icon={<ThumbsUp className="w-5 h-5" />} text="Thích" />
-        <ActionButton icon={<ChatCircle className="w-5 h-5" />} text="Bình luận" />
+        <ActionButton 
+          icon={<ChatCircle className="w-5 h-5" />} 
+          text="Bình luận" 
+          onClick={() => setIsCommentModalOpen(true)}
+        />
         <ActionButton icon={<ShareFat className="w-5 h-5" />} text="Chia sẻ" />
       </div>
+
+      {/* Comment Modal */}
+      {isCommentModalOpen && (
+        <CommentModal 
+          postId={post.id} 
+          onClose={() => setIsCommentModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }
 
-function ActionButton({ icon, text }: { icon: React.ReactNode; text: string }) {
+function ActionButton({ icon, text, onClick }: { icon: React.ReactNode; text: string; onClick?: () => void }) {
   return (
-    <button className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-[#3A3B3C] rounded-lg transition-colors cursor-pointer text-[#B0B3B8] group hover:text-[#E4E6EB]">
+    <button 
+      onClick={onClick}
+      className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-[#3A3B3C] rounded-lg transition-colors cursor-pointer text-[#B0B3B8] group hover:text-[#E4E6EB]"
+    >
       {icon}
       <span className="font-medium text-[15px]">{text}</span>
     </button>
