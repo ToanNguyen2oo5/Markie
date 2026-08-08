@@ -10,23 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Keycloak JWT → GrantedAuthority converter for Spring WebFlux (Reactive).
- *
- * <p>Keycloak embeds roles inside the JWT under:
- * <pre>
- *   {
- *     "realm_access": {
- *       "roles": ["ADMIN", "USER", ...]
- *     }
- *   }
- * </pre>
- * Spring Security's default converter only reads the {@code scope} claim,
- * so we must extract realm roles manually and prefix them with {@code ROLE_}.
- *
- * <p>Strategy: <b>Offline JWT Validation</b> — roles are extracted from the
- * already-verified JWT payload without any additional Keycloak network call.
- */
+
 public class KeycloakReactiveRoleConverter implements Converter<Jwt, Flux<GrantedAuthority>> {
 
     private static final String REALM_ACCESS_CLAIM = "realm_access";

@@ -1,7 +1,11 @@
 package com.stewie.file.service;
 
 import com.stewie.file.configuration.SecurityUtils;
+import com.stewie.file.dto.response.FileData;
 import com.stewie.file.dto.response.FileResponse;
+import com.stewie.file.entity.FileMgmt;
+import com.stewie.file.exception.AppException;
+import com.stewie.file.exception.ErrorCode;
 import com.stewie.file.mapper.FileMgmtMapper;
 import com.stewie.file.repository.FileMgmtRepository;
 import com.stewie.file.repository.FileRepository;
@@ -9,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,5 +46,14 @@ public class FileService {
                 .ownerName(ownerName)
                 .url(fileInfo.getUrl())
                 .build();
+    }
+
+    public FileData downloadFile(String fileName) throws IOException {
+        var fileMgmt = fileMgmtRepository.findById(fileName).orElseThrow(
+                () -> new AppException(ErrorCode.FILE_NOT_FOUND)
+        );
+
+        var resource = fileRepository.read(fileMgmt);
+        return new FileData(fileMgmt.getContentType(), resource);
     }
 }

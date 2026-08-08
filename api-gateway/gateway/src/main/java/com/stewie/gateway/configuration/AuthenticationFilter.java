@@ -1,5 +1,6 @@
 package com.stewie.gateway.configuration;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,10 +27,14 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> PUBLIC_ENDPOINTS = List.of(
+    private String[] PUBLIC_ENDPOINTS = {
             "/profile/internal/registration",
-            "/profile/internal/login"
-    );
+            "/profile/internal/login",
+            "/file/media/download/.*"
+
+    };
+
+
 
     // These paths are only for internal service-to-service calls; block from external clients
     private static final List<String> INTERNAL_ENDPOINTS = List.of(
@@ -53,8 +58,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // Skip authentication check for public endpoints
-        if (isPublicEndpoint(path)) {
-            log.debug("Public endpoint, skipping auth check: {}", path);
+        if (isPublicEndpoint(exchange.getRequest())) {
             return chain.filter(exchange);
         }
 
@@ -70,8 +74,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange);
     }
 
-    private boolean isPublicEndpoint(String path) {
-        return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
+    private boolean isPublicEndpoint(ServerHttpRequest request) {
+        return Arrays.stream(PUBLIC_ENDPOINTS)
+                .anyMatch(s -> request.getURI().getPath().matches(s));
     }
 
     private boolean isInternalEndpoint(String path) {
