@@ -135,10 +135,10 @@
 				</executions>
 				<configuration>
 					<excludes>
-						<exclude>com/devteria/profile/dto/**</exclude>
-						<exclude>com/devteria/profile/entity/**</exclude>
-						<exclude>com/devteria/profile/mapper/**</exclude>
-						<exclude>com/devteria/profile/configuration/**</exclude>
+						<exclude>com/stewie/post/dto/**</exclude>
+						<exclude>com/stewie/post/entity/**</exclude>
+						<exclude>com/stewie/post/mapper/**</exclude>
+						<exclude>com/stewie/post/configuration/**</exclude>
 					</excludes>
 				</configuration>
 			</plugin>
