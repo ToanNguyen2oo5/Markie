@@ -1,7 +1,10 @@
 import { MagnifyingGlass, House, Users, MonitorPlay, Storefront, UsersThree, List, MessengerLogo, Bell } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
+import { useProfile } from '../../context/ProfileContext';
 
 export function Header() {
+  const { avatarUrl } = useProfile();
+
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-[#242526] border-b border-[#393A3B] z-50 flex items-center px-4 justify-between shadow-sm">
       
@@ -48,7 +51,7 @@ export function Header() {
           className="w-10 h-10 rounded-full overflow-hidden ml-2 hover:opacity-90 hover:ring-2 hover:ring-[#0866FF]/60 transition-all"
           title="Xem hồ sơ"
         >
-          <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="w-full h-full object-cover" />
+          <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
         </Link>
       </div>
 

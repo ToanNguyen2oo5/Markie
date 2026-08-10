@@ -3,12 +3,14 @@ import { VideoCamera, ImageSquare, Smiley, X, ArrowClockwise } from '@phosphor-i
 import keycloak from '../../keycloak';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useProfile } from '../../context/ProfileContext';
 
 interface CreatePostCardProps {
   onPostCreated: (post: PostData) => void;
 }
 
 export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
+  const { avatarUrl, fullName } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,7 +58,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
       {/* Trigger Card */}
       <div className="w-full bg-[#242526] rounded-xl shadow-sm border border-[#393A3B]/30 p-4">
         <div className="flex items-center gap-3">
-          <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+          <img src={avatarUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
           <button
             onClick={() => { setModalOpen(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
             className="flex-1 bg-[#3A3B3C] hover:bg-[#4E4F50] text-[#B0B3B8] text-left rounded-full px-4 py-2.5 text-[15px] transition-colors cursor-pointer outline-none"
@@ -110,9 +112,9 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
 
               {/* Modal Author */}
               <div className="flex items-center gap-3 p-4">
-                <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="w-10 h-10 rounded-full object-cover" />
+                <img src={avatarUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
                 <div>
-                  <p className="text-[#E4E6EB] font-semibold text-[15px]">Nguyễn Toàn</p>
+                  <p className="text-[#E4E6EB] font-semibold text-[15px]">{fullName || 'Người dùng'}</p>
                   <span className="text-xs bg-[#3A3B3C] text-[#E4E6EB] font-medium px-2 py-0.5 rounded-md">🌍 Công khai</span>
                 </div>
               </div>

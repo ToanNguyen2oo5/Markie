@@ -12,7 +12,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       // Proxy qua Spring Cloud Gateway (port 8888)
-      '/profile': {
+      '/profile/users': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+      '/profile/internal': {
         target: 'http://localhost:8888',
         changeOrigin: true,
       },

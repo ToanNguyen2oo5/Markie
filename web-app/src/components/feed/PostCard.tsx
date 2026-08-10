@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DotsThree, GlobeHemisphereWest, ThumbsUp, ChatCircle, ShareFat } from '@phosphor-icons/react';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { CommentModal } from './CommentModal';
+import { useProfile } from '../../context/ProfileContext';
 
 interface PostCardProps {
   post: PostData;
@@ -29,8 +30,11 @@ function getAvatarUrl(userId: string): string {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   
+  const isMyPost = profile?.userId === post.userId;
+  const postAvatarUrl = isMyPost ? myAvatarUrl : getAvatarUrl(post.userId);
   const displayName = post.username ?? 'Người dùng';
   const timeAgo = formatTime(post.createdDate);
 
@@ -40,7 +44,7 @@ export function PostCard({ post }: PostCardProps) {
       <div className="flex items-start justify-between p-4">
         <div className="flex items-center gap-2.5">
           <img
-            src={getAvatarUrl(post.userId)}
+            src={postAvatarUrl}
             alt={displayName}
             className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
           />

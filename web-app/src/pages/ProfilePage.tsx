@@ -3,21 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Envelope, Calendar, Pencil,
-  Article, UserCircle, ArrowClockwise, X, Check, Warning
+  Article, UserCircle, ArrowClockwise, X, Check, Warning, Camera
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
+import { useProfile, type ProfileData } from '../context/ProfileContext';
 import keycloak from '../keycloak';
-
-interface ProfileData {
-  profileId: string;
-  userId: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  dob: string | null;
-  address: string | null;
-}
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const containerVariants = {
@@ -80,45 +70,61 @@ function StatChip({ label, value }: { label: string; value: string }) {
 export function ProfilePage() {
   const { authenticated } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, loading, avatarUrl, fullName, updateProfile } = useProfile();
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
-    if (!authenticated) { navigate('/', { replace: true }); return; }
-
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        await keycloak.updateToken(30);
-      } catch { /* ignore */ }
-
-      try {
-        const res = await fetch('/profile/users/my-profile', {
-          headers: { Authorization: `Bearer ${keycloak.token}` },
-        });
-        if (!res.ok) { setError('Không thể tải thông tin hồ sơ.'); return; }
-        const data = await res.json();
-        if (data.code === 1000) setProfile(data.result);
-        else setError(data.message ?? 'Lỗi không xác định.');
-      } catch {
-        setError('Không thể kết nối đến máy chủ.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+    if (!authenticated) { navigate('/', { replace: true }); }
   }, [authenticated, navigate]);
 
-  const fullName = profile
-    ? `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.username
-    : '';
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const avatarSeed = profile?.userId
-    ? profile.userId.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 70 + 1
-    : 11;
+    // Validate file
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError('Ảnh đại diện không được vượt quá 5MB.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chọn file ảnh.');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      await keycloak.updateToken(30);
+    } catch { /* ignore */ }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/profile/users/avatar', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${keycloak.token}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.code === 1000) {
+        updateProfile(data.result as ProfileData);
+      } else {
+        setError(data.message ?? 'Cập nhật avatar thất bại.');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ.');
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so same file can be selected again
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 font-[Outfit,system-ui,sans-serif]">
@@ -199,18 +205,36 @@ export function ProfilePage() {
                   className="flex flex-col sm:flex-row sm:items-end gap-4 px-6 -mt-12 mb-6"
                 >
                   {/* Avatar */}
-                  <div className="relative flex-shrink-0">
+                  <div className="relative flex-shrink-0 group/avatar">
                     <motion.div
                       whileHover={{ scale: 1.04 }}
                       transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-                      className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-zinc-950 shadow-xl"
+                      className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-zinc-950 shadow-xl relative cursor-pointer"
+                      onClick={() => document.getElementById('avatar-upload')?.click()}
                     >
                       <img
-                        src={`https://i.pravatar.cc/150?img=${avatarSeed}`}
+                        src={avatarUrl}
                         alt={fullName}
                         className="w-full h-full object-cover"
                       />
+                      {/* Upload overlay */}
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-200">
+                        {avatarUploading ? (
+                          <ArrowClockwise className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
+                      </div>
                     </motion.div>
+                    {/* Hidden file input */}
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                      disabled={avatarUploading}
+                    />
                     {/* online pulse */}
                     <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-zinc-950 animate-pulse" />
                   </div>
@@ -264,7 +288,7 @@ export function ProfilePage() {
                       profile={profile}
                       onClose={() => setEditOpen(false)}
                       onSaved={(updated) => {
-                        setProfile(updated);
+                        updateProfile(updated);
                         setEditOpen(false);
                       }}
                     />

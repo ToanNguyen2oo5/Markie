@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, PaperPlaneRight, ArrowClockwise } from '@phosphor-icons/react';
 import keycloak from '../../keycloak';
+import { useProfile } from '../../context/ProfileContext';
 
 interface CommentModalProps {
   postId: string;
@@ -33,6 +34,7 @@ function getAvatarUrl(userId: string): string {
 }
 
 export function CommentModal({ postId, onClose }: CommentModalProps) {
+  const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,10 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
 
   // Track which comment we're replying to
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+
+  // Resolve avatar: use context avatar for current user, hash-based for others
+  const resolveAvatar = (userId: string) =>
+    profile?.userId === userId ? myAvatarUrl : getAvatarUrl(userId);
 
   const fetchComments = useCallback(async (currentCursor: string | null) => {
     if (loadingRef.current) return;
@@ -213,7 +219,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                 {/* Root comment */}
                 <div className="flex gap-2.5 group">
                   <img 
-                    src={getAvatarUrl(comment.userId)}
+                    src={resolveAvatar(comment.userId)}
                     alt="avatar" 
                     className="w-9 h-9 rounded-full object-cover shadow-sm"
                   />
@@ -257,7 +263,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                     {comment.replies.map(reply => (
                       <div key={reply.id} className="flex gap-2 group">
                         <img 
-                          src={getAvatarUrl(reply.userId)}
+                          src={resolveAvatar(reply.userId)}
                           alt="avatar" 
                           className="w-7 h-7 rounded-full object-cover shadow-sm"
                         />
@@ -315,7 +321,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
         {/* Comment Input */}
         <div className="p-4 border-t border-[#3E4042] flex items-center gap-2">
           <img 
-             src={`https://i.pravatar.cc/150?img=12`} 
+             src={myAvatarUrl} 
              alt="my-avatar" 
              className="w-9 h-9 rounded-full object-cover"
           />

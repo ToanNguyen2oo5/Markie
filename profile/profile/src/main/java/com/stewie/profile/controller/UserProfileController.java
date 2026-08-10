@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.stewie.profile.dto.ApiResponse;
 import com.stewie.profile.dto.request.UpdateProfileRequest;
@@ -58,6 +59,13 @@ public class UserProfileController {
     ApiResponse<List<ProfileResponse>> getAllProfiles() {
         return ApiResponse.<List<ProfileResponse>>builder()
                 .result(userProfileService.getAllProfiles())
+                .build();
+    }
+
+    @PutMapping("/users/avatar")
+    ApiResponse<ProfileResponse> updateAvatar(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.<ProfileResponse>builder()
+                .result(userProfileService.updateAvatar(file))
                 .build();
     }
 }

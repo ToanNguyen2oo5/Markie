@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.stewie.profile.dto.request.UpdateProfileRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
@@ -15,6 +16,7 @@ import com.stewie.profile.exception.AppException;
 import com.stewie.profile.exception.ErrorCode;
 import com.stewie.profile.mapper.UserProfileMapper;
 import com.stewie.profile.repository.UserProfileRepository;
+import com.stewie.profile.repository.httpclient.FileClient;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -29,12 +31,8 @@ public class UserProfileService {
 
     UserProfileRepository userProfileRepository;
     UserProfileMapper userProfileMapper;
+    FileClient fileClient;
 
-    /**
-     * Sync profile from JWT claims (Keycloak).
-     * If UserProfile already exists for this userId, return existing.
-     * Otherwise, create a new one from JWT claims including custom attributes (dob, address).
-     */
     public ProfileResponse syncProfile() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -94,7 +92,7 @@ public class UserProfileService {
 
         UserProfile userProfile = userProfileRepository
                 .findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         return userProfileMapper.toProfileResponse(userProfile);
     }
@@ -102,7 +100,7 @@ public class UserProfileService {
     public ProfileResponse getProfileById(String profileId) {
         UserProfile userProfile = userProfileRepository
                 .findById(profileId)
-                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         return userProfileMapper.toProfileResponse(userProfile);
     }
@@ -111,7 +109,7 @@ public class UserProfileService {
     public ProfileResponse getProfileByUserId(String userId) {
         UserProfile userProfile = userProfileRepository
                 .findByUserId(userId) // ← tìm theo userId Keycloak
-                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         return userProfileMapper.toProfileResponse(userProfile);
     }
 
@@ -130,6 +128,20 @@ public class UserProfileService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         userProfileMapper.update(profile, request);
+
+        return userProfileMapper.toProfileResponse(userProfileRepository.save(profile));
+    }
+
+    public ProfileResponse updateAvatar(MultipartFile file) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+
+        var profile = userProfileRepository
+                .findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        var response = fileClient.uploadFile(file);
+        profile.setAvatar(response.getResult().getUrl());
 
         return userProfileMapper.toProfileResponse(userProfileRepository.save(profile));
     }

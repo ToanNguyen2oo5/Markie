@@ -1,12 +1,15 @@
 import { Users, ClockCounterClockwise, BookmarkSimple, MonitorPlay, CalendarBlank, CaretDown, CirclesFour } from '@phosphor-icons/react';
+import { useProfile } from '../../context/ProfileContext';
 
 export function SidebarLeft() {
+  const { avatarUrl, fullName } = useProfile();
+
   return (
     <div className="w-full flex flex-col pt-4">
       {/* User Profile Shortcut */}
       <SidebarItem 
-        icon={<img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="w-9 h-9 rounded-full object-cover" />}
-        text="Nguyễn Toàn"
+        icon={<img src={avatarUrl} alt="Profile" className="w-9 h-9 rounded-full object-cover" />}
+        text={fullName || 'Người dùng'}
       />
       
       {/* Menu Items */}
