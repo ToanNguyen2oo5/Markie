@@ -28,7 +28,7 @@ public class PostController {
     @GetMapping("/my-posts")
     ApiResponse<PageResponse<PostResponse>> getMyPosts(
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "5") int limit
     ){
         return ApiResponse.<PageResponse<PostResponse>>builder()
                 .result(postService.getMyPosts(cursor, limit))

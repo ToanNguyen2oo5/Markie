@@ -185,15 +185,15 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-      <div 
+      <div
         className="bg-[#242526] rounded-xl w-full max-w-[700px] flex flex-col max-h-[85vh] border border-[#393A3B] shadow-2xl animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#3E4042]">
           <h3 className="text-xl font-bold text-[#E4E6EB] flex-1 text-center">Bình luận bài viết</h3>
-          <button 
+          <button
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-[#3A3B3C] flex items-center justify-center hover:bg-[#4E4F50] transition-colors text-[#E4E6EB] absolute right-6"
           >
@@ -218,9 +218,9 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
               <div key={comment.id}>
                 {/* Root comment */}
                 <div className="flex gap-2.5 group">
-                  <img 
+                  <img
                     src={resolveAvatar(comment.userId)}
-                    alt="avatar" 
+                    alt="avatar"
                     className="w-9 h-9 rounded-full object-cover shadow-sm"
                   />
                   <div className="flex flex-col max-w-[calc(100%-3rem)]">
@@ -234,7 +234,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                     </div>
                     <div className="flex gap-4 mt-1.5 px-3 text-[12px] text-[#B0B3B8] font-bold">
                       <span className="cursor-pointer hover:underline transition-all">Thích</span>
-                      <span 
+                      <span
                         className="cursor-pointer hover:underline transition-all"
                         onClick={() => handleReplyClick(comment.id, comment.username ?? 'Người dùng')}
                       >
@@ -262,9 +262,9 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                   <div className="ml-12 mt-3 space-y-3 border-l-2 border-[#3E4042] pl-3">
                     {comment.replies.map(reply => (
                       <div key={reply.id} className="flex gap-2 group">
-                        <img 
+                        <img
                           src={resolveAvatar(reply.userId)}
-                          alt="avatar" 
+                          alt="avatar"
                           className="w-7 h-7 rounded-full object-cover shadow-sm"
                         />
                         <div className="flex flex-col max-w-[calc(100%-2.5rem)]">
@@ -299,9 +299,9 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
               </div>
             ))
           )}
-          
+
           {hasNext && !loading && (
-            <button 
+            <button
               onClick={() => fetchComments(cursor)}
               className="text-[#B0B3B8] hover:underline text-[14px] font-semibold ml-[46px]"
             >
@@ -320,13 +320,13 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
 
         {/* Comment Input */}
         <div className="p-4 border-t border-[#3E4042] flex items-center gap-2">
-          <img 
-             src={myAvatarUrl} 
-             alt="my-avatar" 
-             className="w-9 h-9 rounded-full object-cover"
+          <img
+            src={myAvatarUrl}
+            alt="my-avatar"
+            className="w-9 h-9 rounded-full object-cover"
           />
           <div className="flex-1 bg-[#3A3B3C] rounded-full flex items-center px-4 py-2 focus-within:ring-2 focus-within:ring-[#0866FF]/50 transition-shadow">
-            <input 
+            <input
               ref={inputRef}
               type="text"
               placeholder={replyingTo ? `Phản hồi ${replyingTo.username}...` : "Viết bình luận của bạn..."}
@@ -340,7 +340,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
               }}
               className="flex-1 bg-transparent border-none focus:outline-none text-[#E4E6EB] text-[15px] placeholder-[#B0B3B8] max-h-32"
             />
-            <button 
+            <button
               onClick={handleSubmit}
               disabled={!newComment.trim() || submitting}
               className="ml-2 p-1.5 rounded-full hover:bg-[#4E4F50] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[#0866FF]"

@@ -12,33 +12,57 @@ export function LandingPage() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [serverConnected] = useState(true);
 
-  // Sync profile after authentication
+  // Called after Keycloak redirects back with a valid token.
+  // - Existing user (login):  GET my-profile succeeds  → redirect immediately, no sync call.
+  // - New user (register):    GET my-profile returns USER_NOT_EXISTED (code 1012) → call sync-profile then redirect.
   const syncProfile = useCallback(async () => {
     if (!keycloak.token) return;
     setSyncLoading(true);
-    try {
-      const response = await fetch('/profile/users/sync-profile', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${keycloak.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json();
-      if (response.ok && data.code === 1000) {
-        navigate('/feed');
-      } else {
-        console.error('Sync profile failed:', data);
-        // Navigate anyway if sync fails
+
+    let navigated = false;
+    const goToFeed = () => {
+      if (!navigated) {
+        navigated = true;
         navigate('/feed');
       }
+    };
+
+    try {
+      await keycloak.updateToken(30);
+    } catch { /* ignore */ }
+
+    try {
+      // Step 1: Check if profile already exists
+      const checkRes = await fetch('/profile/users/my-profile', {
+        headers: { Authorization: `Bearer ${keycloak.token}` },
+      });
+      const checkData = await checkRes.json();
+
+      if (checkData.code === 1000) {
+        // Existing user (login) — profile already exists, skip sync
+        goToFeed();
+        return;
+      }
+
+      // Step 2: Profile not found → new user just registered, create profile
+      if (checkData.code === 1012) {
+        await fetch('/profile/users/sync-profile', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${keycloak.token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     } catch (err) {
-      console.error('Sync profile error:', err);
-      navigate('/feed');
+      console.error('Profile check/sync error:', err);
     } finally {
       setSyncLoading(false);
+      goToFeed();
     }
   }, [navigate]);
+
+
 
   // Auto-redirect if already authenticated
   useEffect(() => {
@@ -46,6 +70,7 @@ export function LandingPage() {
       syncProfile();
     }
   }, [authenticated, syncProfile]);
+
 
   const handleLogin = () => keycloak.login();
   const handleRegister = () => keycloak.register();

@@ -5,7 +5,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.Optional;
+
 public interface PostRepository extends MongoRepository<Post, String> {
     Slice<Post> findByUserIdOrderByIdDesc(String userId, Pageable pageable);
     Slice<Post> findByIdLessThanAndUserIdOrderByIdDesc(String id, String userId, Pageable pageable);
+
 }

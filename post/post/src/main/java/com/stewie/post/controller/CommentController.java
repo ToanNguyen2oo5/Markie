@@ -31,7 +31,7 @@ public class CommentController {
     ApiResponse<PageResponse<CommentResponse>> getCommentsByPostId(
             @PathVariable String postId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "5") int limit
     ) {
         return ApiResponse.<PageResponse<CommentResponse>>builder()
                 .result(commentService.getCommentsByPostId(postId, cursor, limit))
@@ -42,7 +42,7 @@ public class CommentController {
     ApiResponse<PageResponse<CommentResponse>> getReplies(
             @PathVariable String parentId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "5") int limit
     ) {
         return ApiResponse.<PageResponse<CommentResponse>>builder()
                 .result(commentService.getReplies(parentId, cursor, limit))

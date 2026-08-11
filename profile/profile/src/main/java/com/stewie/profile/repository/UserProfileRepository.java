@@ -1,5 +1,7 @@
 package com.stewie.profile.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.neo4j.repository.Neo4jRepository;
@@ -10,4 +12,6 @@ import com.stewie.profile.entity.UserProfile;
 @Repository
 public interface UserProfileRepository extends Neo4jRepository<UserProfile, String> {
     Optional<UserProfile> findByUserId(String userId);
+
+    List<UserProfile> findAllByUserIdIn(Collection<String> userIds);
 }

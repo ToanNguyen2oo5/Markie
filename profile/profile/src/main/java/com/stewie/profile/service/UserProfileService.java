@@ -119,6 +119,12 @@ public class UserProfileService {
                 .toList();
     }
 
+    public List<ProfileResponse> getProfilesByUserIds(List<String> userIds) {
+        return userProfileRepository.findAllByUserIdIn(userIds).stream()
+                .map(userProfileMapper::toProfileResponse)
+                .toList();
+    }
+
     public ProfileResponse updateMyProfile(UpdateProfileRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getName();

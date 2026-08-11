@@ -34,13 +34,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     };
 
-
-
-    // These paths are only for internal service-to-service calls; block from external clients
+    // These paths are only for internal service-to-service calls; block from
+    // external clients
     private static final List<String> INTERNAL_ENDPOINTS = List.of(
             "/profile/internal/users",
-            "/post/internal"
-    );
+            "/post/internal");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
