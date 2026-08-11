@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { X, PaperPlaneRight, ArrowClockwise } from '@phosphor-icons/react';
 import keycloak from '../../keycloak';
 import { useProfile } from '../../context/ProfileContext';
@@ -28,12 +28,21 @@ interface CommentWithReplies extends CommentData {
   showReplies: boolean;
 }
 
+// DiceBear generates SVG avatars inline — no external HTTP request, no lag
 function getAvatarUrl(userId: string): string {
-  const num = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 70 + 1;
-  return `https://i.pravatar.cc/150?img=${num}`;
+  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}&size=36`;
 }
 
-export function CommentModal({ postId, onClose }: CommentModalProps) {
+// Cache formatted dates to avoid repeated toLocaleDateString calls (expensive with locale)
+const dateCache = new Map<string, string>();
+function formatCommentTime(iso: string): string {
+  if (dateCache.has(iso)) return dateCache.get(iso)!;
+  const result = new Date(iso).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  dateCache.set(iso, result);
+  return result;
+}
+
+export const CommentModal = memo(function CommentModal({ postId, onClose }: CommentModalProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -47,9 +56,11 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
   // Track which comment we're replying to
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
 
-  // Resolve avatar: use context avatar for current user, hash-based for others
-  const resolveAvatar = (userId: string) =>
-    profile?.userId === userId ? myAvatarUrl : getAvatarUrl(userId);
+  // Memoize avatar resolver — stable reference, avoids re-creation on every render
+  const resolveAvatar = useMemo(
+    () => (userId: string) => profile?.userId === userId ? myAvatarUrl : getAvatarUrl(userId),
+    [profile?.userId, myAvatarUrl]
+  );
 
   const fetchComments = useCallback(async (currentCursor: string | null) => {
     if (loadingRef.current) return;
@@ -184,7 +195,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150" onClick={onClose}>
       <div
         className="bg-[#242526] rounded-xl w-full max-w-[700px] flex flex-col max-h-[85vh] border border-[#393A3B] shadow-2xl animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
@@ -201,8 +212,8 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
           </button>
         </div>
 
-        {/* Comments List */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* Comments List — translate3d promotes to GPU composite layer for smooth scrolling */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 transform-gpu">
           {loading ? (
             <div className="flex justify-center py-10">
               <ArrowClockwise className="w-8 h-8 animate-spin text-[#0866FF]" />
@@ -241,7 +252,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                         Phản hồi
                       </span>
                       <span className="font-normal text-[#8A8D91]">
-                        {new Date(comment.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        {formatCommentTime(comment.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -279,7 +290,7 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
                           <div className="flex gap-4 mt-1 px-3 text-[11px] text-[#B0B3B8] font-bold">
                             <span className="cursor-pointer hover:underline transition-all">Thích</span>
                             <span className="font-normal text-[#8A8D91]">
-                              {new Date(reply.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                              {formatCommentTime(reply.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -356,4 +367,4 @@ export function CommentModal({ postId, onClose }: CommentModalProps) {
       </div>
     </div>
   );
-}
+});

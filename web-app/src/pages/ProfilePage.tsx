@@ -129,14 +129,14 @@ export function ProfilePage() {
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 font-[Outfit,system-ui,sans-serif]">
 
-      {/* ── Ambient background ─────────────────────────────── */}
+      {/* ── Ambient background — will-change-transform isolates to GPU layer ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-[25%] left-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-950/30 blur-[130px]" />
-        <div className="absolute top-[50%] right-[5%] w-[40vw] h-[40vw] rounded-full bg-zinc-800/20 blur-[120px]" />
+        <div className="absolute -top-[25%] left-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-950/30 blur-[130px] will-change-transform" />
+        <div className="absolute top-[50%] right-[5%] w-[40vw] h-[40vw] rounded-full bg-zinc-800/20 blur-[120px] will-change-transform" />
       </div>
 
       {/* ── Top bar ────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/60 z-40 flex items-center px-4 gap-4">
+      <header className="fixed top-0 left-0 right-0 h-14 bg-zinc-950/95 border-b border-zinc-800/60 z-40 flex items-center px-4 gap-4 shadow-lg shadow-black/30">
         <Link
           to="/feed"
           className="flex items-center gap-2 group"

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { DotsThree, GlobeHemisphereWest, ThumbsUp, ChatCircle, ShareFat } from '@phosphor-icons/react';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { CommentModal } from './CommentModal';
@@ -23,13 +23,12 @@ function formatTime(dateString: string): string {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+// DiceBear SVG — instant, no external HTTP request
 function getAvatarUrl(userId: string): string {
-  // stable avatar based on userId hash
-  const num = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 70 + 1;
-  return `https://i.pravatar.cc/150?img=${num}`;
+  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}&size=40`;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export const PostCard = memo(function PostCard({ post }: PostCardProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   
@@ -86,7 +85,7 @@ export function PostCard({ post }: PostCardProps) {
         <ActionButton icon={<ShareFat className="w-5 h-5" />} text="Chia sẻ" />
       </div>
 
-      {/* Comment Modal */}
+      {/* Comment Modal — rendered via portal-like pattern to avoid cascade re-renders */}
       {isCommentModalOpen && (
         <CommentModal 
           postId={post.id} 
@@ -95,9 +94,9 @@ export function PostCard({ post }: PostCardProps) {
       )}
     </div>
   );
-}
+});
 
-function ActionButton({ icon, text, onClick }: { icon: React.ReactNode; text: string; onClick?: () => void }) {
+const ActionButton = memo(function ActionButton({ icon, text, onClick }: { icon: React.ReactNode; text: string; onClick?: () => void }) {
   return (
     <button 
       onClick={onClick}
@@ -107,4 +106,5 @@ function ActionButton({ icon, text, onClick }: { icon: React.ReactNode; text: st
       <span className="font-medium text-[15px]">{text}</span>
     </button>
   );
-}
+});
+
