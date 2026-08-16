@@ -1,14 +1,20 @@
 package com.stewie.profile.service;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.stewie.event.dto.AvatarUploadRequestedEvent;
 import com.stewie.profile.dto.request.UpdateProfileRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
@@ -32,6 +38,9 @@ public class UserProfileService {
     UserProfileRepository userProfileRepository;
     UserProfileMapper userProfileMapper;
     FileClient fileClient;
+
+    KafkaTemplate<String, Object> kafkaTemplate;
+    StringRedisTemplate stringRedisTemplate;
 
     public ProfileResponse syncProfile() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -146,9 +155,32 @@ public class UserProfileService {
                 .findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        var response = fileClient.uploadFile(file);
-        profile.setAvatar(response.getResult().getUrl());
+        String sagaId = UUID.randomUUID().toString();
 
-        return userProfileMapper.toProfileResponse(userProfileRepository.save(profile));
+        try {
+            // Encode file to Base64 and save to Redis with a 5-minute TTL
+            String base64File = Base64.getEncoder().encodeToString(file.getBytes());
+            stringRedisTemplate.opsForValue().set("avatar:" + sagaId, base64File, Duration.ofMinutes(5));
+
+            AvatarUploadRequestedEvent event = AvatarUploadRequestedEvent.builder()
+                    .sagaId(sagaId)
+                    .userId(userId)
+                    .contentType(file.getContentType())
+                    // Passing the original filename via the 'url' field temporarily (as requested by existing event
+                    // structure)
+                    .url(file.getOriginalFilename())
+                    .build();
+
+            // Publish event to trigger file-service asynchronously
+            kafkaTemplate.send("avatar.upload.requested", sagaId, event);
+
+        } catch (Exception e) {
+            log.error("Failed to process avatar update for user {}", userId, e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
+
+        // Trả về profile hiện tại (optimistic return)
+        // Client có thể polling API GET /my-profile để biết khi nào url avatar thay đổi
+        return userProfileMapper.toProfileResponse(profile);
     }
 }

@@ -11,6 +11,5 @@ import lombok.experimental.FieldDefaults;
 public class FileResponse {
     String originalName;
     String ownerId;
-    String ownerName;
     String url;
 }

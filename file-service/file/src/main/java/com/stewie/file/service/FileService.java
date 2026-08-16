@@ -1,9 +1,7 @@
 package com.stewie.file.service;
 
-import com.stewie.file.configuration.SecurityUtils;
 import com.stewie.file.dto.response.FileData;
 import com.stewie.file.dto.response.FileResponse;
-import com.stewie.file.entity.FileMgmt;
 import com.stewie.file.exception.AppException;
 import com.stewie.file.exception.ErrorCode;
 import com.stewie.file.mapper.FileMgmtMapper;
@@ -13,7 +11,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +26,7 @@ public class FileService {
     FileMgmtRepository fileMgmtRepository;
 
     FileMgmtMapper fileMgmtMapper;
+
     public FileResponse uploadFile(MultipartFile file) throws IOException {
 
         var fileInfo = fileRepository.store(file);
@@ -36,16 +34,42 @@ public class FileService {
         var fileMgmt = fileMgmtMapper.toFileMgmt(fileInfo);
 
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        String ownerName = SecurityUtils.getPreferredUsername();
         fileMgmt.setOwnerId(userId);
 
         fileMgmt = fileMgmtRepository.save(fileMgmt);
         return FileResponse.builder()
                 .originalName(fileInfo.getName())
                 .ownerId(userId)
-                .ownerName(ownerName)
                 .url(fileInfo.getUrl())
                 .build();
+    }
+
+    public FileResponse uploadFileFromSaga(byte[] fileData, String originalFilename, String contentType, String userId) throws IOException {
+
+        var fileInfo = fileRepository.storeBytes(fileData, originalFilename, contentType);
+
+        var fileMgmt = fileMgmtMapper.toFileMgmt(fileInfo);
+
+        // SecurityContext is not available in Kafka listener thread, use provided userId
+        fileMgmt.setOwnerId(userId);
+
+        fileMgmt = fileMgmtRepository.save(fileMgmt);
+        return FileResponse.builder()
+                .originalName(fileInfo.getName())
+                .ownerId(userId)
+                .url(fileInfo.getUrl())
+                .build();
+    }
+
+    public void deleteFileBySaga(String fileName) {
+        fileMgmtRepository.findById(fileName).ifPresent(fileMgmt -> {
+            fileMgmtRepository.delete(fileMgmt);
+            try {
+                fileRepository.deleteFile(fileMgmt.getId());
+            } catch (IOException e) {
+                log.error("Failed to delete physical file {}", fileMgmt.getId(), e);
+            }
+        });
     }
 
     public FileData downloadFile(String fileName) throws IOException {

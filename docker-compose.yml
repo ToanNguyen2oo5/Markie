@@ -6,6 +6,7 @@ services:
     restart: always
     ports:
       - '9092:9092'
+      - '9094:9094'
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
@@ -14,3 +15,11 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+  redis:
+    image: 'redis:7-alpine'
+    container_name: redis-markie
+    hostname: redis
+    restart: always
+    ports:
+      - '6379:6379'

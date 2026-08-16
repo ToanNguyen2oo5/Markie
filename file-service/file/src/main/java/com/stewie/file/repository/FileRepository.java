@@ -49,9 +49,39 @@ public class FileRepository {
                 .build();
     }
 
+    public FileInfo storeBytes(byte[] fileData, String originalFilename, String contentType) throws IOException {
+        Path folder = Paths.get(storageDir);
+
+        String fileExtension = StringUtils.getFilenameExtension(originalFilename);
+
+        String fileName = Objects.isNull(fileExtension)
+                ? UUID.randomUUID().toString()
+                : UUID.randomUUID() + "." + fileExtension;
+
+        Path filePath = folder.resolve(fileName).normalize().toAbsolutePath();
+
+        Files.write(filePath, fileData);
+
+        return FileInfo.builder()
+                .name(fileName)
+                .path(filePath.toString())
+                .size((long) fileData.length)
+                .contentType(contentType)
+                .md5Checksum(DigestUtils.md5DigestAsHex(fileData))
+                .url(urlPrefix + fileName)
+                .build();
+    }
+
+    public void deleteFile(String fileName) throws IOException {
+        Path folder = Paths.get(storageDir);
+        Path filePath = folder.resolve(fileName).normalize().toAbsolutePath();
+        Files.deleteIfExists(filePath);
+    }
+
     public Resource read(FileMgmt fileMgmt) throws IOException {
         var data = Files.readAllBytes(Path.of(fileMgmt.getPath()));
 
         return new ByteArrayResource(data);
     }
+
 }
