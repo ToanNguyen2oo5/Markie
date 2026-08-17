@@ -78,10 +78,15 @@ export function LandingPage() {
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-blue-500/20 selection:text-blue-300 relative overflow-hidden">
 
-      {/* Background Ambient Glow — will-change-transform isolates each to its own GPU layer */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-blue-900/10 blur-[140px] will-change-transform" />
-        <div className="absolute top-[40%] -right-[15%] w-[45vw] h-[45vw] rounded-full bg-cyan-900/10 blur-[160px] will-change-transform" />
+      {/* Background Ambient Glow — pure GPU radial-gradients (0ms rasterization cost) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle 50vw at 0% 0%, rgba(30, 58, 138, 0.12) 0%, transparent 70%),
+            radial-gradient(circle 45vw at 100% 45%, rgba(6, 182, 212, 0.08) 0%, transparent 65%)
+          `,
+        }}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:32px_32px] opacity-20" />
       </div>
 

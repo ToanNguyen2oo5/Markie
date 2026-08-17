@@ -1,4 +1,4 @@
-import { Users, ClockCounterClockwise, BookmarkSimple, MonitorPlay, CalendarBlank, CaretDown, CirclesFour } from '@phosphor-icons/react';
+import { Users, ClockCounterClockwise, BookmarkSimple, MonitorPlay, CaretDown, CirclesFour } from '@phosphor-icons/react';
 import { useProfile } from '../../context/ProfileContext';
 
 export function SidebarLeft() {
