@@ -1,3 +1,23 @@
+server:
+  port: 8085 # Port của search service
+  servlet:
+    context-path: /search
 spring:
   application:
-    name: search
+    name: search-service
+
+  # Cấu hình Elasticsearch
+  elasticsearch:
+    uris: http://localhost:9200
+
+
+  # Cấu hình Kafka Consumer
+  kafka:
+    bootstrap-servers: localhost:9094
+    consumer:
+      group-id: search-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
