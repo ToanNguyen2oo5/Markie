@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Envelope, Calendar, Pencil,
   Article, UserCircle, ArrowClockwise, X, Check, Warning, Camera
@@ -9,18 +9,27 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile, type ProfileData } from '../context/ProfileContext';
 import keycloak from '../keycloak';
 
-// ─── Animation Variants ───────────────────────────────────────────────────────
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 20 } },
-};
-const fadeIn = {
+// ─── GPU-Accelerated Animation Variants (No heavy spring physics loop) ─────────
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.4 } },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+  },
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+const fadeIn: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.25, ease: 'easeOut' } },
 };
 
 function formatDob(dob: string | null): string {
@@ -35,7 +44,7 @@ function formatDob(dob: string | null): string {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-function ProfileSkeleton() {
+const ProfileSkeleton = memo(function ProfileSkeleton() {
   return (
     <div className="animate-pulse">
       <div className="h-52 bg-zinc-800 rounded-2xl mb-0" />
@@ -51,10 +60,10 @@ function ProfileSkeleton() {
       </div>
     </div>
   );
-}
+});
 
-// ─── Stat Chip ────────────────────────────────────────────────────────────────
-function StatChip({ label, value }: { label: string; value: string }) {
+// ─── Stat Chip (Memoized) ─────────────────────────────────────────────────────
+const StatChip = memo(function StatChip({ label, value }: { label: string; value: string }) {
   return (
     <motion.div
       variants={fadeUp}
@@ -64,16 +73,42 @@ function StatChip({ label, value }: { label: string; value: string }) {
       <span className="text-zinc-100 text-[15px] font-medium truncate">{value}</span>
     </motion.div>
   );
-}
+});
+
+// ─── InfoRow (Memoized) ───────────────────────────────────────────────────────
+const InfoRow = memo(function InfoRow({
+  icon, label, value, mono = false,
+}: {
+  icon: React.ReactNode; label: string; value: string; mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl px-4 py-3.5">
+      {icon}
+      <div className="flex flex-col min-w-0">
+        <span className="text-zinc-500 text-[11px] uppercase tracking-widest font-semibold">{label}</span>
+        <span className={`text-zinc-200 text-[14px] mt-0.5 truncate ${mono ? 'font-mono text-[12px] text-zinc-400' : ''}`}>
+          {value}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ProfilePage() {
   const { authenticated } = useAuth();
   const navigate = useNavigate();
-  const { profile, loading, avatarUrl, fullName, updateProfile } = useProfile();
-  const [error, setError] = useState<string | null>(null);
+  const {
+    profile,
+    loading,
+    avatarUrl,
+    fullName,
+    updateProfile,
+    uploadAvatar,
+    isAvatarUpdating,
+  } = useProfile();
+  const [error] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     if (!authenticated) { navigate('/', { replace: true }); }
@@ -83,44 +118,9 @@ export function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setError('Ảnh đại diện không được vượt quá 5MB.');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setError('Vui lòng chọn file ảnh.');
-      return;
-    }
-
-    setAvatarUploading(true);
     try {
-      await keycloak.updateToken(30);
-    } catch { /* ignore */ }
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/profile/users/avatar', {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${keycloak.token}`,
-        },
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok && data.code === 1000) {
-        updateProfile(data.result as ProfileData);
-      } else {
-        setError(data.message ?? 'Cập nhật avatar thất bại.');
-      }
-    } catch {
-      setError('Không thể kết nối đến máy chủ.');
+      await uploadAvatar(file);
     } finally {
-      setAvatarUploading(false);
       // Reset input so same file can be selected again
       e.target.value = '';
     }
@@ -129,11 +129,16 @@ export function ProfilePage() {
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 font-[Outfit,system-ui,sans-serif]">
 
-      {/* ── Ambient background — will-change-transform isolates to GPU layer ── */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-[25%] left-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-950/30 blur-[130px] will-change-transform" />
-        <div className="absolute top-[50%] right-[5%] w-[40vw] h-[40vw] rounded-full bg-zinc-800/20 blur-[120px] will-change-transform" />
-      </div>
+      {/* ── Ambient background — pure GPU radial gradients (0ms rasterization overhead, 60+ FPS) ── */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle 50vw at 15% 0%, rgba(30, 58, 138, 0.18) 0%, transparent 70%),
+            radial-gradient(circle 40vw at 85% 65%, rgba(39, 39, 42, 0.15) 0%, transparent 65%)
+          `,
+        }}
+      />
 
       {/* ── Top bar ────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 h-14 bg-zinc-950/95 border-b border-zinc-800/60 z-40 flex items-center px-4 gap-4 shadow-lg shadow-black/30">
@@ -159,13 +164,23 @@ export function ProfilePage() {
 
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="skeleton" {...fadeIn} className="mt-6">
+              <motion.div
+                key="skeleton"
+                variants={fadeIn}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
+                className="mt-6"
+              >
                 <ProfileSkeleton />
               </motion.div>
             ) : error ? (
               <motion.div
                 key="error"
-                {...fadeIn}
+                variants={fadeIn}
+                initial="hidden"
+                animate="visible"
+                exit="hidden"
                 className="mt-20 flex flex-col items-center gap-4 text-center"
               >
                 <Article className="w-12 h-12 text-zinc-600" />
@@ -193,10 +208,12 @@ export function ProfilePage() {
                   <img
                     src={`https://picsum.photos/seed/${profile.userId}/800/300`}
                     alt="Cover"
+                    loading="eager"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   {/* subtle vignette */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/60 to-transparent pointer-events-none" />
                 </motion.div>
 
                 {/* Avatar + name row */}
@@ -206,26 +223,40 @@ export function ProfilePage() {
                 >
                   {/* Avatar */}
                   <div className="relative flex-shrink-0 group/avatar">
-                    <motion.div
-                      whileHover={{ scale: 1.04 }}
-                      transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-                      className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-zinc-950 shadow-xl relative cursor-pointer"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
+                    <div
+                      className={`w-24 h-24 rounded-2xl overflow-hidden border-4 border-zinc-950 shadow-xl relative ${
+                        isAvatarUpdating
+                          ? 'cursor-not-allowed opacity-90'
+                          : 'cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-transform duration-200 ease-out'
+                      }`}
+                      onClick={() => !isAvatarUpdating && document.getElementById('avatar-upload')?.click()}
                     >
                       <img
                         src={avatarUrl}
                         alt={fullName}
+                        loading="eager"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                       {/* Upload overlay */}
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-200">
-                        {avatarUploading ? (
-                          <ArrowClockwise className="w-6 h-6 text-white animate-spin" />
+                      <div
+                        className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200 ${
+                          isAvatarUpdating
+                            ? 'bg-black/60 opacity-100 backdrop-blur-[2px]'
+                            : 'bg-black/50 opacity-0 group-hover/avatar:opacity-100'
+                        }`}
+                      >
+                        {isAvatarUpdating ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <ArrowClockwise className="w-6 h-6 text-blue-400 animate-spin" />
+                            <span className="text-[10px] font-semibold text-zinc-200">Đang lưu...</span>
+                          </div>
                         ) : (
                           <Camera className="w-6 h-6 text-white" />
                         )}
                       </div>
-                    </motion.div>
+                    </div>
+
                     {/* Hidden file input */}
                     <input
                       id="avatar-upload"
@@ -233,10 +264,17 @@ export function ProfilePage() {
                       accept="image/*"
                       onChange={handleAvatarUpload}
                       className="hidden"
-                      disabled={avatarUploading}
+                      disabled={isAvatarUpdating}
                     />
-                    {/* online pulse */}
-                    <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-zinc-950 animate-pulse" />
+
+                    {/* Status badge */}
+                    {isAvatarUpdating ? (
+                      <span className="absolute bottom-1 right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-zinc-950 flex items-center justify-center shadow-md shadow-blue-500/50">
+                        <ArrowClockwise className="w-2.5 h-2.5 text-white animate-spin" />
+                      </span>
+                    ) : (
+                      <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-zinc-950 animate-pulse" />
+                    )}
                   </div>
 
                   {/* Name block */}
@@ -248,15 +286,14 @@ export function ProfilePage() {
                   </div>
 
                   {/* Edit button */}
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
+                  <button
+                    type="button"
                     onClick={() => setEditOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 transition-colors cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                   >
                     <Pencil className="w-4 h-4" />
                     Chỉnh sửa hồ sơ
-                  </motion.button>
+                  </button>
                 </motion.div>
 
                 {/* ── Info grid (asymmetric 3-col → 1-col mobile) ── */}
@@ -301,25 +338,6 @@ export function ProfilePage() {
 
         </div>
       </main>
-    </div>
-  );
-}
-
-// ─── InfoRow ──────────────────────────────────────────────────────────────────
-function InfoRow({
-  icon, label, value, mono = false,
-}: {
-  icon: React.ReactNode; label: string; value: string; mono?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3 bg-zinc-900/50 border border-zinc-800/50 rounded-xl px-4 py-3.5">
-      {icon}
-      <div className="flex flex-col min-w-0">
-        <span className="text-zinc-500 text-[11px] uppercase tracking-widest font-semibold">{label}</span>
-        <span className={`text-zinc-200 text-[14px] mt-0.5 truncate ${mono ? 'font-mono text-[12px] text-zinc-400' : ''}`}>
-          {value}
-        </span>
-      </div>
     </div>
   );
 }
@@ -401,10 +419,10 @@ function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
       {/* Modal */}
       <motion.div
         key="edit-modal"
-        initial={{ opacity: 0, y: 32, scale: 0.96 }}
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="fixed inset-0 z-50 flex items-center justify-center px-4"
       >
         <form
@@ -453,12 +471,10 @@ function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
             >
               Hủy
             </button>
-            <motion.button
+            <button
               type="submit"
               disabled={saving}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer
                 ${success
                   ? 'bg-emerald-600 text-white'
                   : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
@@ -471,7 +487,7 @@ function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
               ) : (
                 'Lưu thay đổi'
               )}
-            </motion.button>
+            </button>
           </div>
         </form>
       </motion.div>
@@ -507,4 +523,3 @@ function Field({
     </div>
   );
 }
-

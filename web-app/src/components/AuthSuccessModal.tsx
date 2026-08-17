@@ -15,7 +15,7 @@ interface AuthSuccessModalProps {
 
 export const AuthSuccessModal: React.FC<AuthSuccessModalProps> = ({
   profileData,
-  keycloakToken,
+  keycloakToken: _keycloakToken,
   onLogout,
 }) => {
   const profile = profileData;
