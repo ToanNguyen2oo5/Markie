@@ -1,8 +1,8 @@
-package com.stewie.post.dto.event;
+package com.stewie.event;
 
 import java.time.Instant;
 
-import com.stewie.post.dto.event.enums.EventType;
+import com.stewie.event.enums.EventType;
 
 import lombok.Builder;
 

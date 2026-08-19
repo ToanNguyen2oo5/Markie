@@ -6,6 +6,7 @@ import { ToastContainer } from './components/ToastContainer';
 import LandingPage from './pages/LandingPage';
 import { NewsFeedPage } from './pages/NewsFeedPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SearchPage } from './pages/SearchPage';
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/feed" element={<NewsFeedPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/search" element={<SearchPage />} />
           </Routes>
         </ProfileProvider>
       </ToastProvider>
