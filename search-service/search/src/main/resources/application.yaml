@@ -10,6 +10,11 @@ spring:
   elasticsearch:
     uris: http://localhost:9200
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8280/realms/markie
   # Cấu hình Kafka Consumer
   kafka:
     bootstrap-servers: localhost:9094
@@ -17,6 +22,8 @@ spring:
       group-id: search-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "*"
+        spring.json.type.mapping: "com.stewie.event.PostSyncEvent:org.stewie.event.dto.PostSyncEvent,com.stewie.event.dto.PostSyncEvent:org.stewie.event.dto.PostSyncEvent,com.stewie.post.dto.event.PostSyncEvent:org.stewie.event.dto.PostSyncEvent,com.stewie.event.dto.ProfileSyncEvent:org.stewie.event.dto.ProfileSyncEvent,com.stewie.event.ProfileSyncEvent:org.stewie.event.dto.ProfileSyncEvent"

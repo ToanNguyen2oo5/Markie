@@ -31,7 +31,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             "/profile/internal/registration",
             "/profile/internal/login",
             "/file/media/download/.*"
-
+   
     };
 
     // These paths are only for internal service-to-service calls; block from

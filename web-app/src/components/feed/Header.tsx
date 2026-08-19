@@ -1,9 +1,129 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MagnifyingGlass, House, Users, MonitorPlay, Storefront, UsersThree, List, MessengerLogo, Bell } from '@phosphor-icons/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProfile } from '../../context/ProfileContext';
+import { SearchSuggestionDropdown } from '../search/SearchSuggestionDropdown';
+import keycloak from '../../keycloak';
+import type { SearchPostResult, SearchUserResult, SearchApiResponse } from '../../types/searchTypes';
 
 export function Header() {
   const { avatarUrl } = useProfile();
+  const navigate = useNavigate();
+  const [searchValue, setSearchValue] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [suggestedUsers, setSuggestedUsers] = useState<SearchUserResult[]>([]);
+  const [suggestedPosts, setSuggestedPosts] = useState<SearchPostResult[]>([]);
+
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSuggestedUsers([]);
+      setSuggestedPosts([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      try {
+        await keycloak.updateToken(30);
+      } catch {
+        // ignore
+      }
+
+      const headers: Record<string, string> = {};
+      if (keycloak.token) {
+        headers['Authorization'] = `Bearer ${keycloak.token}`;
+      }
+
+      const [usersRes, postsRes] = await Promise.allSettled([
+        fetch(`/search/users?keyword=${encodeURIComponent(query)}&page=0&size=4`, { headers }),
+        fetch(`/search/posts?keyword=${encodeURIComponent(query)}&page=0&size=3`, { headers }),
+      ]);
+
+      if (usersRes.status === 'fulfilled' && usersRes.value.ok) {
+        const data: SearchApiResponse<SearchUserResult> = await usersRes.value.json();
+        if (data.code === 1000) {
+          setSuggestedUsers(data.result.items || []);
+        }
+      }
+
+      if (postsRes.status === 'fulfilled' && postsRes.value.ok) {
+        const data: SearchApiResponse<SearchPostResult> = await postsRes.value.json();
+        if (data.code === 1000) {
+          setSuggestedPosts(data.result.items || []);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch search suggestions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleInputChange = (value: string) => {
+    setSearchValue(value);
+    if (!value.trim()) {
+      setIsOpen(false);
+      setSuggestedUsers([]);
+      setSuggestedPosts([]);
+      return;
+    }
+
+    setIsOpen(true);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 250);
+  };
+
+  const handleSearch = (customQuery?: string) => {
+    const queryToUse = (customQuery ?? searchValue).trim();
+    if (queryToUse) {
+      setIsOpen(false);
+      navigate(`/search?q=${encodeURIComponent(queryToUse)}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  const handleSelectUser = (user: SearchUserResult) => {
+    setIsOpen(false);
+    navigate(`/profile/${encodeURIComponent(user.userId)}`);
+  };
+
+  const handleSelectPost = (post: SearchPostResult) => {
+    setIsOpen(false);
+    navigate(`/search?q=${encodeURIComponent(post.content.slice(0, 30))}`);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 h-14 bg-[#242526] border-b border-[#393A3B] z-50 flex items-center px-4 justify-between shadow-sm">
@@ -20,13 +140,38 @@ export function Header() {
             Markie
           </span>
         </Link>
-        <div className="relative hidden md:flex items-center">
-          <MagnifyingGlass className="absolute left-3 text-[#A8AB81] w-5 h-5" />
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm tình iu" 
-            className="bg-[#3A3B3C] text-[#E4E6EB] placeholder-[#A8AB81] h-10 w-[240px] rounded-full pl-10 pr-4 outline-none focus:w-[280px] transition-all duration-300"
+        <div ref={searchContainerRef} className="relative hidden md:flex items-center">
+          <button
+            onClick={() => handleSearch()}
+            className="absolute left-3 text-[#A8AB81] hover:text-[#E4E6EB] transition-colors cursor-pointer z-10"
+            aria-label="Tìm kiếm"
+          >
+            <MagnifyingGlass className="w-5 h-5" />
+          </button>
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={() => {
+              if (searchValue.trim()) setIsOpen(true);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Tìm kiếm trên Markie"
+            className="bg-[#3A3B3C] text-[#E4E6EB] placeholder-[#A8AB81] h-10 w-[240px] rounded-full pl-10 pr-4 outline-none focus:w-[280px] focus:ring-2 focus:ring-[#0866FF]/40 transition-all duration-300"
           />
+
+          {/* Search Suggestion Dropdown */}
+          {isOpen && searchValue.trim().length > 0 && (
+            <SearchSuggestionDropdown
+              keyword={searchValue.trim()}
+              users={suggestedUsers}
+              posts={suggestedPosts}
+              loading={loading}
+              onSelectKeyword={(kw) => handleSearch(kw)}
+              onSelectUser={handleSelectUser}
+              onSelectPost={handleSelectPost}
+            />
+          )}
         </div>
       </div>
 

@@ -23,6 +23,10 @@ export default defineConfig({
       '/post': {
         target: 'http://localhost:8888',
         changeOrigin: true,
+      },
+      '/search': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
       }
     }
   }

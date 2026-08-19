@@ -114,11 +114,10 @@ public class UserProfileService {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = authentication.getName();
 
-        UserProfile userProfile = userProfileRepository
+        return userProfileRepository
                 .findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        return userProfileMapper.toProfileResponse(userProfile);
+                .map(userProfileMapper::toProfileResponse)
+                .orElseGet(this::syncProfile);
     }
 
     public ProfileResponse getProfileById(String profileId) {

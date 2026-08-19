@@ -1,7 +1,7 @@
 package com.stewie.post.service;
 
-import com.stewie.post.dto.event.PostSyncEvent;
-import com.stewie.post.dto.event.enums.EventType;
+import com.stewie.event.dto.PostSyncEvent;
+import com.stewie.event.enums.EventType;
 import com.stewie.post.dto.request.PostRequest;
 import com.stewie.post.dto.response.PageResponse;
 import com.stewie.post.dto.response.PostResponse;

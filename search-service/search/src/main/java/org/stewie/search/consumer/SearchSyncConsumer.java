@@ -8,7 +8,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.stewie.event.dto.PostSyncEvent;
 import org.stewie.event.dto.ProfileSyncEvent;
-import org.stewie.event.dto.enums.EventType;
+import org.stewie.event.enums.EventType;
 import org.stewie.search.entity.PostDocument;
 import org.stewie.search.entity.UserDocument;
 import org.stewie.search.repository.PostSearchRepository;

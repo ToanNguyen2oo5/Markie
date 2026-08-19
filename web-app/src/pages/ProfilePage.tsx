@@ -1,9 +1,10 @@
 import { useState, useEffect, memo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Envelope, Calendar, Pencil,
-  Article, UserCircle, ArrowClockwise, X, Check, Warning, Camera
+  Article, UserCircle, ArrowClockwise, Warning, Camera,
+  ChatCircleText, UserPlus
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useProfile, type ProfileData } from '../context/ProfileContext';
@@ -98,21 +99,77 @@ const InfoRow = memo(function InfoRow({
 export function ProfilePage() {
   const { authenticated } = useAuth();
   const navigate = useNavigate();
+  const { userId } = useParams();
+
   const {
-    profile,
-    loading,
-    avatarUrl,
-    fullName,
+    profile: myProfile,
+    loading: myLoading,
+    avatarUrl: myAvatarUrl,
+    fullName: myFullName,
     updateProfile,
     uploadAvatar,
     isAvatarUpdating,
   } = useProfile();
-  const [error] = useState<string | null>(null);
+
+  const [otherProfile, setOtherProfile] = useState<ProfileData | null>(null);
+  const [otherLoading, setOtherLoading] = useState(false);
+  const [otherError, setOtherError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
+  const isOwner = !userId || (myProfile?.userId && userId === myProfile.userId);
+
   useEffect(() => {
-    if (!authenticated) { navigate('/', { replace: true }); }
-  }, [authenticated, navigate]);
+    if (!authenticated) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (userId && myProfile?.userId && userId !== myProfile.userId) {
+      setOtherLoading(true);
+      setOtherError(null);
+
+      (async () => {
+        try {
+          await keycloak.updateToken(30).catch(() => {});
+          const headers: Record<string, string> = {};
+          if (keycloak.token) headers['Authorization'] = `Bearer ${keycloak.token}`;
+
+          const res = await fetch(`/profile/users/user/${encodeURIComponent(userId)}`, { headers });
+          if (!res.ok) {
+            setOtherError('Không tìm thấy thông tin người dùng.');
+            return;
+          }
+          const data = await res.json();
+          if (data.code === 1000) {
+            setOtherProfile(data.result as ProfileData);
+          } else {
+            setOtherError(data.message || 'Không thể tải thông tin người dùng.');
+          }
+        } catch {
+          setOtherError('Lỗi kết nối máy chủ khi tải hồ sơ.');
+        } finally {
+          setOtherLoading(false);
+        }
+      })();
+    } else {
+      setOtherProfile(null);
+      setOtherError(null);
+    }
+  }, [authenticated, navigate, userId, myProfile?.userId]);
+
+  const activeProfile = isOwner ? myProfile : otherProfile;
+  const activeLoading = isOwner ? myLoading : otherLoading;
+  const activeError = isOwner ? null : otherError;
+
+  const activeAvatarUrl = isOwner
+    ? myAvatarUrl
+    : activeProfile?.avatar || (activeProfile?.userId ? `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(activeProfile.userId)}&size=150` : 'https://i.pravatar.cc/150?img=11');
+
+  const activeFullName = isOwner
+    ? myFullName
+    : activeProfile
+      ? `${activeProfile.firstName ?? ''} ${activeProfile.lastName ?? ''}`.trim() || activeProfile.username
+      : '';
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,7 +178,6 @@ export function ProfilePage() {
     try {
       await uploadAvatar(file);
     } finally {
-      // Reset input so same file can be selected again
       e.target.value = '';
     }
   };
@@ -129,7 +185,7 @@ export function ProfilePage() {
   return (
     <div className="min-h-[100dvh] bg-zinc-950 text-zinc-100 font-[Outfit,system-ui,sans-serif]">
 
-      {/* ── Ambient background — pure GPU radial gradients (0ms rasterization overhead, 60+ FPS) ── */}
+      {/* ── Ambient background ── */}
       <div
         className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
         style={{
@@ -152,7 +208,9 @@ export function ProfilePage() {
         <div className="flex-1" />
         <div className="flex items-center gap-1.5 text-zinc-400">
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm font-medium">Hồ sơ cá nhân</span>
+          <span className="text-sm font-medium">
+            {isOwner ? 'Hồ sơ cá nhân' : `Trang của ${activeFullName || 'người dùng'}`}
+          </span>
         </div>
         <div className="flex-1" />
         <div className="w-[88px]" />
@@ -163,7 +221,7 @@ export function ProfilePage() {
         <div className="w-full max-w-[720px]">
 
           <AnimatePresence mode="wait">
-            {loading ? (
+            {activeLoading ? (
               <motion.div
                 key="skeleton"
                 variants={fadeIn}
@@ -174,7 +232,7 @@ export function ProfilePage() {
               >
                 <ProfileSkeleton />
               </motion.div>
-            ) : error ? (
+            ) : activeError ? (
               <motion.div
                 key="error"
                 variants={fadeIn}
@@ -184,17 +242,17 @@ export function ProfilePage() {
                 className="mt-20 flex flex-col items-center gap-4 text-center"
               >
                 <Article className="w-12 h-12 text-zinc-600" />
-                <p className="text-zinc-400">{error}</p>
+                <p className="text-zinc-400">{activeError}</p>
                 <button
-                  onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                  onClick={() => navigate('/feed')}
+                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                 >
-                  <ArrowClockwise className="w-4 h-4" /> Thử lại
+                  <ArrowLeft className="w-4 h-4" /> Quay lại Bảng tin
                 </button>
               </motion.div>
-            ) : profile ? (
+            ) : activeProfile ? (
               <motion.div
-                key="profile"
+                key={activeProfile.userId}
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
@@ -206,13 +264,12 @@ export function ProfilePage() {
                   className="w-full h-52 rounded-2xl overflow-hidden relative"
                 >
                   <img
-                    src={`https://picsum.photos/seed/${profile.userId}/800/300`}
+                    src={`https://picsum.photos/seed/${activeProfile.userId}/800/300`}
                     alt="Cover"
                     loading="eager"
                     decoding="async"
                     className="w-full h-full object-cover"
                   />
-                  {/* subtle vignette */}
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/60 to-transparent pointer-events-none" />
                 </motion.div>
 
@@ -225,50 +282,54 @@ export function ProfilePage() {
                   <div className="relative flex-shrink-0 group/avatar">
                     <div
                       className={`w-24 h-24 rounded-2xl overflow-hidden border-4 border-zinc-950 shadow-xl relative ${
-                        isAvatarUpdating
-                          ? 'cursor-not-allowed opacity-90'
-                          : 'cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-transform duration-200 ease-out'
+                        isOwner && !isAvatarUpdating
+                          ? 'cursor-pointer hover:scale-[1.03] active:scale-[0.98] transition-transform duration-200 ease-out'
+                          : ''
                       }`}
-                      onClick={() => !isAvatarUpdating && document.getElementById('avatar-upload')?.click()}
+                      onClick={() => isOwner && !isAvatarUpdating && document.getElementById('avatar-upload')?.click()}
                     >
                       <img
-                        src={avatarUrl}
-                        alt={fullName}
+                        src={activeAvatarUrl}
+                        alt={activeFullName}
                         loading="eager"
                         decoding="async"
                         className="w-full h-full object-cover"
                       />
-                      {/* Upload overlay */}
-                      <div
-                        className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200 ${
-                          isAvatarUpdating
-                            ? 'bg-black/60 opacity-100 backdrop-blur-[2px]'
-                            : 'bg-black/50 opacity-0 group-hover/avatar:opacity-100'
-                        }`}
-                      >
-                        {isAvatarUpdating ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <ArrowClockwise className="w-6 h-6 text-blue-400 animate-spin" />
-                            <span className="text-[10px] font-semibold text-zinc-200">Đang lưu...</span>
-                          </div>
-                        ) : (
-                          <Camera className="w-6 h-6 text-white" />
-                        )}
-                      </div>
+                      {/* Upload overlay only for owner */}
+                      {isOwner && (
+                        <div
+                          className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200 ${
+                            isAvatarUpdating
+                              ? 'bg-black/60 opacity-100 backdrop-blur-[2px]'
+                              : 'bg-black/50 opacity-0 group-hover/avatar:opacity-100'
+                          }`}
+                        >
+                          {isAvatarUpdating ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <ArrowClockwise className="w-6 h-6 text-blue-400 animate-spin" />
+                              <span className="text-[10px] font-semibold text-zinc-200">Đang lưu...</span>
+                            </div>
+                          ) : (
+                            <Camera className="w-6 h-6 text-white" />
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Hidden file input */}
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                      disabled={isAvatarUpdating}
-                    />
+                    {/* Hidden file input for owner */}
+                    {isOwner && (
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        disabled={isAvatarUpdating}
+                      />
+                    )}
 
                     {/* Status badge */}
-                    {isAvatarUpdating ? (
+                    {isOwner && isAvatarUpdating ? (
                       <span className="absolute bottom-1 right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-zinc-950 flex items-center justify-center shadow-md shadow-blue-500/50">
                         <ArrowClockwise className="w-2.5 h-2.5 text-white animate-spin" />
                       </span>
@@ -280,34 +341,53 @@ export function ProfilePage() {
                   {/* Name block */}
                   <div className="flex-1 pb-1">
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-100 leading-tight">
-                      {fullName}
+                      {activeFullName}
                     </h1>
-                    <p className="text-zinc-400 text-sm mt-0.5">@{profile.username}</p>
+                    <p className="text-zinc-400 text-sm mt-0.5">@{activeProfile.username}</p>
                   </div>
 
-                  {/* Edit button */}
-                  <button
-                    type="button"
-                    onClick={() => setEditOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Chỉnh sửa hồ sơ
-                  </button>
+                  {/* Action buttons */}
+                  {isOwner ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Chỉnh sửa hồ sơ
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0866FF] hover:bg-[#0866FF]/90 rounded-xl text-sm font-semibold text-white transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Thêm bạn bè
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 transition-all cursor-pointer"
+                      >
+                        <ChatCircleText className="w-4 h-4" />
+                        Nhắn tin
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
 
-                {/* ── Info grid (asymmetric 3-col → 1-col mobile) ── */}
+                {/* ── Info grid ── */}
                 <motion.div
                   variants={fadeUp}
                   className="grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-3 px-6"
                 >
-                  <InfoRow icon={<Envelope className="w-5 h-5 text-blue-400 flex-shrink-0" />} label="Email" value={profile.email ?? '—'} />
-                  <InfoRow icon={<MapPin className="w-5 h-5 text-rose-400 flex-shrink-0" />} label="Địa chỉ" value={profile.address ?? 'Chưa cập nhật'} />
-                  <InfoRow icon={<Calendar className="w-5 h-5 text-amber-400 flex-shrink-0" />} label="Ngày sinh" value={formatDob(profile.dob)} />
-                  <InfoRow icon={<UserCircle className="w-5 h-5 text-violet-400 flex-shrink-0" />} label="Profile ID" value={profile.profileId} mono />
+                  <InfoRow icon={<Envelope className="w-5 h-5 text-blue-400 flex-shrink-0" />} label="Email" value={activeProfile.email ?? '—'} />
+                  <InfoRow icon={<MapPin className="w-5 h-5 text-rose-400 flex-shrink-0" />} label="Địa chỉ" value={activeProfile.address ?? 'Chưa cập nhật'} />
+                  <InfoRow icon={<Calendar className="w-5 h-5 text-amber-400 flex-shrink-0" />} label="Ngày sinh" value={formatDob(activeProfile.dob)} />
+                  <InfoRow icon={<UserCircle className="w-5 h-5 text-violet-400 flex-shrink-0" />} label="Profile ID" value={activeProfile.profileId} mono />
                 </motion.div>
 
-                {/* ── Stat chips ─────────────────────────────────── */}
+                {/* ── Stat chips ── */}
                 <motion.div
                   variants={containerVariants}
                   className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 mt-6"
@@ -318,11 +398,11 @@ export function ProfilePage() {
                   <StatChip label="Người theo dõi" value="—" />
                 </motion.div>
 
-                {/* ── Edit Modal ─────────────────────────────────── */}
+                {/* ── Edit Modal only for owner ── */}
                 <AnimatePresence>
-                  {editOpen && (
+                  {isOwner && editOpen && activeProfile && (
                     <EditProfileModal
-                      profile={profile}
+                      profile={activeProfile}
                       onClose={() => setEditOpen(false)}
                       onSaved={(updated) => {
                         updateProfile(updated);

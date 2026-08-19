@@ -23,7 +23,6 @@ public class UserProfileController {
     UserProfileService userProfileService;
 
     @PostMapping("/users/sync-profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> syncProfile() {
         return ApiResponse.<ProfileResponse>builder()
                 .result(userProfileService.syncProfile())
@@ -31,7 +30,6 @@ public class UserProfileController {
     }
 
     @GetMapping("/users/my-profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> getMyProfile() {
         return ApiResponse.<ProfileResponse>builder()
                 .result(userProfileService.getMyProfile())
@@ -39,15 +37,20 @@ public class UserProfileController {
     }
 
     @PutMapping("/users/my-profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<ProfileResponse> updateMyProfile(@RequestBody UpdateProfileRequest request) {
         return ApiResponse.<ProfileResponse>builder()
                 .result(userProfileService.updateMyProfile(request))
                 .build();
     }
 
+    @GetMapping("/users/user/{userId}")
+    ApiResponse<ProfileResponse> getProfileByUserId(@PathVariable String userId) {
+        return ApiResponse.<ProfileResponse>builder()
+                .result(userProfileService.getProfileByUserId(userId))
+                .build();
+    }
+
     @GetMapping("/users/{profileId}")
-    @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<ProfileResponse> getProfile(@PathVariable String profileId) {
         return ApiResponse.<ProfileResponse>builder()
                 .result(userProfileService.getProfileById(profileId))

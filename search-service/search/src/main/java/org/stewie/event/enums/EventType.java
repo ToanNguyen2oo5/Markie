@@ -1,4 +1,4 @@
-package org.stewie.event.dto.enums;
+package org.stewie.event.enums;
 
 public enum EventType {
     CREATED,

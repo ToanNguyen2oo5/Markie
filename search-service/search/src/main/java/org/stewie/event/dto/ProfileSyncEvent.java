@@ -1,7 +1,7 @@
 package org.stewie.event.dto;
 
 import lombok.Builder;
-import org.stewie.event.dto.enums.EventType;
+import org.stewie.event.enums.EventType;
 
 // Event user profile
 @Builder
