@@ -15,6 +15,12 @@ spring:
         jwt:
           issuer-uri: http://localhost:8280/realms/markie
 
+  kafka:
+    bootstrap-servers: localhost:9094
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 app:
   services:
     profile:

@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.stewie.event.dto.AvatarUploadRequestedEvent;
+import com.stewie.event.dto.ProfileSyncEvent;
+import com.stewie.event.dto.enums.EventType;
 import com.stewie.profile.dto.request.UpdateProfileRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
@@ -92,6 +94,19 @@ public class UserProfileService {
         profile = userProfileRepository.save(profile);
         log.info("New UserProfile created for userId: {}, profileId: {}", userId, profile.getProfileId());
 
+        ProfileSyncEvent event = ProfileSyncEvent.builder()
+                .avatar(profile.getAvatar())
+                .userId(profile.getUserId())
+                .profileId(profile.getProfileId())
+                .username(profile.getUsername())
+                .firstName(profile.getFirstName())
+                .lastName(profile.getLastName())
+                .email(profile.getEmail())
+                .eventType(EventType.CREATED)
+                .build();
+
+        kafkaTemplate.send("profile.sync.events", event);
+
         return userProfileMapper.toProfileResponse(profile);
     }
 
@@ -144,7 +159,22 @@ public class UserProfileService {
 
         userProfileMapper.update(profile, request);
 
-        return userProfileMapper.toProfileResponse(userProfileRepository.save(profile));
+        profile = userProfileRepository.save(profile);
+
+        ProfileSyncEvent event = ProfileSyncEvent.builder()
+                .avatar(profile.getAvatar())
+                .userId(profile.getUserId())
+                .profileId(profile.getProfileId())
+                .username(profile.getUsername())
+                .firstName(profile.getFirstName())
+                .lastName(profile.getLastName())
+                .email(profile.getEmail())
+                .eventType(EventType.UPDATED)
+                .build();
+
+        kafkaTemplate.send("profile.sync.events", event);
+
+        return userProfileMapper.toProfileResponse(profile);
     }
 
     public ProfileResponse updateAvatar(MultipartFile file) {
@@ -179,8 +209,6 @@ public class UserProfileService {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
         }
 
-        // Trả về profile hiện tại (optimistic return)
-        // Client có thể polling API GET /my-profile để biết khi nào url avatar thay đổi
         return userProfileMapper.toProfileResponse(profile);
     }
 }

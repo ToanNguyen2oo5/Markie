@@ -1,5 +1,7 @@
 package com.stewie.post.service;
 
+import com.stewie.post.dto.event.PostSyncEvent;
+import com.stewie.post.dto.event.enums.EventType;
 import com.stewie.post.dto.request.PostRequest;
 import com.stewie.post.dto.response.PageResponse;
 import com.stewie.post.dto.response.PostResponse;
@@ -17,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +34,7 @@ public class PostService {
     PostRepository postRepository;
     ProfileClient profileClient;
     PostMapper postMapper;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
 
     public PostResponse createPost(PostRequest request) {
@@ -44,7 +48,36 @@ public class PostService {
                 .createdDate(Instant.now())
                 .modifiedDate(Instant.now())
                 .build();
-        return postMapper.toPostResponse(postRepository.save(post));
+        post = postRepository.save(post);
+
+        // Lấy username từ profile service để gửi kèm event
+        String username = null;
+        try {
+            ProfileResponse profile = profileClient.getProfileByUserId(userId).getResult();
+            if (profile != null) {
+                username = profile.getUsername();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch username for post sync event, userId: {}", userId, e);
+        }
+
+        // Gửi event SAU khi save DB thành công
+        try {
+            PostSyncEvent event = PostSyncEvent.builder()
+                    .postId(post.getId())
+                    .userId(post.getUserId())
+                    .username(username)
+                    .content(post.getContent())
+                    .createdDate(post.getCreatedDate())
+                    .eventType(EventType.CREATED)
+                    .build();
+            kafkaTemplate.send("post.sync.events", event);
+            log.info("Sent post sync event for postId: {}", post.getId());
+        } catch (Exception e) {
+            log.error("Failed to send post sync event for postId: {}", post.getId(), e);
+        }
+
+        return postMapper.toPostResponse(post);
     }
 
     public PageResponse<PostResponse> getMyPosts(String cursor, int limit) {
@@ -94,3 +127,4 @@ public class PostService {
         return postMapper.toPostResponse(post);
     }
 }
+

@@ -10,7 +10,6 @@ spring:
   elasticsearch:
     uris: http://localhost:9200
 
-
   # Cấu hình Kafka Consumer
   kafka:
     bootstrap-servers: localhost:9094
