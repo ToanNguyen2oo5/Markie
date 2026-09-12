@@ -267,17 +267,6 @@ cd search-service/search
    ```
 4. Truy cập giao diện ứng dụng tại: [http://localhost:3000](http://localhost:3000).
 
----
-
-## 📊 Dữ liệu mẫu & Kiểm thử tìm kiếm
-
-Dự án đã chuẩn bị sẵn bộ dữ liệu mẫu trong thư mục gốc để kiểm thử tính năng tìm kiếm và phân tích:
-- `posts_sample.csv`: Danh sách bài viết mẫu dạng bảng.
-- `posts_sample_bulk.ndjson`: Dữ liệu bài viết chuẩn bị cho việc nạp trực tiếp vào Elasticsearch (Bulk API).
-- `search_keywords.csv`: Danh sách các từ khóa phổ biến phục vụ kiểm thử đề xuất tìm kiếm (Search Suggestion).
-
----
-
 ## 📂 Cấu trúc thư mục dự án
 
 ```text
