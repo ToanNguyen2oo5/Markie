@@ -25,7 +25,7 @@ public class PostDocument {
     String username;
     @Field(type = FieldType.Text, analyzer = "standard")
     String content;
-    @Field(type = FieldType.Date)
+    @Field(type = FieldType.Date, format = {}, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSX||uuuu-MM-dd'T'HH:mm:ssX||epoch_millis")
     Instant createdDate;
     @Field(type = FieldType.Long)
     Long likeCount;

@@ -9,5 +9,4 @@ import org.stewie.search.entity.PostDocument;
 @Repository
 public interface PostSearchRepository extends ElasticsearchRepository<PostDocument,String> {
     Page<PostDocument> findByContentContaining(String content, Pageable pageable);
-
 }

@@ -30,8 +30,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     private String[] PUBLIC_ENDPOINTS = {
             "/profile/internal/registration",
             "/profile/internal/login",
-            "/file/media/download/.*"
-   
+            "/file/media/download/.*",
+            "/search/.*"
+
     };
 
     // These paths are only for internal service-to-service calls; block from
