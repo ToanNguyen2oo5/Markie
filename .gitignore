@@ -5,6 +5,11 @@
 # Compiled class file
 *.class
 
+# Build and target directories
+target/
+**/target/
+
+
 # Log file
 *.log
 
