@@ -94,7 +94,7 @@ graph TD
 | **Authentication** | Keycloak 24+, OpenID Connect (OIDC), OAuth2, JWT | SSO, cấp quyền, quản lý phiên đăng nhập |
 | **API Gateway** | Spring Cloud Gateway (Java 21, Spring Boot 3.2.5), WebFlux | Routing, Rate limiting, Filter security |
 | **Backend Services** | Spring Boot 3.2.5, Java 21 LTS | REST API, Spring Data, MapStruct, Lombok |
-| **Message Broker** | Apache Kafka 3.7 (KRaft mode - không cần ZooKeeper) | Xử lý sự kiện phân tán, đồng bộ CQRS |
+| **Message Broker** | Apache Kafka 3.7 | Xử lý sự kiện phân tán, đồng bộ CQRS |
 | **Graph Database** | Neo4j 5.x | Lưu trữ biểu đồ quan hệ người dùng (Friends, Followers) |
 | **Document Database** | MongoDB | Lưu trữ bài viết, bình luận, lượt thích và file metadata |
 | **Search Engine** | Elasticsearch 8.13.0 & Kibana 8.13.0 | Tìm kiếm toàn văn (Full-text search), gợi ý từ khóa |
