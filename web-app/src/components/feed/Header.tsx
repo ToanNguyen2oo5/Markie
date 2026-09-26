@@ -1,31 +1,59 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MagnifyingGlass, House, Users, MonitorPlay, Storefront, UsersThree, List, MessengerLogo, Bell } from '@phosphor-icons/react';
-import { Link, useNavigate } from 'react-router-dom';
+import {
+  MagnifyingGlass,
+  House,
+  Users,
+  MonitorPlay,
+  Storefront,
+  UsersThree,
+  List,
+  MessengerLogo,
+  Bell,
+  User,
+  SignOut,
+} from '@phosphor-icons/react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../context/ProfileContext';
+import { useAuth } from '../../context/AuthContext';
 import { SearchSuggestionDropdown } from '../search/SearchSuggestionDropdown';
 import keycloak from '../../keycloak';
 import type { SearchPostResult, SearchUserResult, SearchApiResponse } from '../../types/searchTypes';
 
 export function Header() {
-  const { avatarUrl } = useProfile();
+  const { profile, avatarUrl, fullName } = useProfile();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestedUsers, setSuggestedUsers] = useState<SearchUserResult[]>([]);
   const [suggestedPosts, setSuggestedPosts] = useState<SearchPostResult[]>([]);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  const location = useLocation();
+  const isFeed = location.pathname === '/feed';
+  const isFriends = location.pathname === '/friends';
 
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
         searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
+        !searchContainerRef.current.contains(target)
       ) {
         setIsOpen(false);
+      }
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(target)
+      ) {
+        setProfileMenuOpen(false);
       }
     };
 
@@ -177,11 +205,21 @@ export function Header() {
 
       {/* Center Section: Navigation Tabs */}
       <div className="hidden md:flex items-center justify-center h-full flex-1 max-w-[600px] gap-2">
-        <NavTab icon={<House weight="fill" />} active />
-        <NavTab icon={<Users />} />
-        <NavTab icon={<MonitorPlay />} />
-        <NavTab icon={<Storefront />} />
-        <NavTab icon={<UsersThree />} />
+        <NavTab
+          icon={<House weight={isFeed ? 'fill' : 'regular'} />}
+          active={isFeed}
+          onClick={() => navigate('/feed')}
+          title="Bảng tin"
+        />
+        <NavTab
+          icon={<Users weight={isFriends ? 'fill' : 'regular'} />}
+          active={isFriends}
+          onClick={() => navigate('/friends')}
+          title="Đề xuất bạn bè"
+        />
+        <NavTab icon={<MonitorPlay />} title="Video" />
+        <NavTab icon={<Storefront />} title="Marketplace" />
+        <NavTab icon={<UsersThree />} title="Nhóm" />
       </div>
 
       {/* Right Section: Actions & Profile */}
@@ -191,29 +229,117 @@ export function Header() {
            <IconButton icon={<MessengerLogo weight="fill" />} />
            <IconButton icon={<Bell weight="fill" />} badge={3} />
         </div>
-        <Link
-          to="/profile"
-          className="w-10 h-10 rounded-full overflow-hidden ml-2 hover:opacity-90 hover:ring-2 hover:ring-[#0866FF]/60 transition-all"
-          title="Xem hồ sơ"
-        >
-          <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-        </Link>
+        {/* Profile Avatar & Dropdown Menu */}
+        <div ref={profileMenuRef} className="relative ml-2">
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen((prev) => !prev)}
+            className={`w-10 h-10 rounded-full overflow-hidden transition-all duration-200 cursor-pointer block border ${
+              profileMenuOpen
+                ? 'ring-2 ring-blue-500 border-transparent shadow-lg shadow-blue-500/20'
+                : 'border-zinc-700/60 hover:opacity-95 hover:ring-2 hover:ring-blue-500/50'
+            }`}
+            title="Tài khoản cá nhân"
+            aria-expanded={profileMenuOpen}
+          >
+            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+          </button>
+
+          <AnimatePresence>
+            {profileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="absolute right-0 mt-2 w-64 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-2xl p-2 shadow-2xl shadow-black/70 z-50 overflow-hidden"
+              >
+                {/* User quick profile banner */}
+                <div
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-800/80 transition-colors cursor-pointer group"
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-zinc-800 border border-zinc-700/60 group-hover:ring-2 group-hover:ring-blue-500/40 transition-all">
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-zinc-100 group-hover:text-blue-400 truncate transition-colors">
+                      {fullName || profile?.username || 'Người dùng'}
+                    </p>
+                    <p className="text-xs text-zinc-400 truncate">
+                      @{profile?.username || 'user'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="my-1.5 border-t border-zinc-800/80" />
+
+                {/* Actions */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  <User className="w-4 h-4 text-blue-400" />
+                  <span>Xem trang cá nhân</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer active:scale-[0.98]"
+                >
+                  <SignOut className="w-4 h-4 text-rose-400" />
+                  <span>Đăng xuất</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
     </header>
   );
 }
 
-function NavTab({ icon, active }: { icon: React.ReactNode, active?: boolean }) {
+function NavTab({
+  icon,
+  active,
+  onClick,
+  title,
+}: {
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+  title?: string;
+}) {
   return (
-    <div className={`relative h-full w-[110px] flex items-center justify-center cursor-pointer group ${active ? 'text-[#0866FF]' : 'text-[#B0B3B8] hover:bg-[#3A3B3C] hover:rounded-lg my-1 transition-colors'}`}>
-      <div className="w-7 h-7">
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`relative h-full w-[110px] flex items-center justify-center cursor-pointer group transition-colors ${
+        active
+          ? 'text-[#0866FF]'
+          : 'text-[#B0B3B8] hover:bg-[#3A3B3C] hover:rounded-lg my-1'
+      }`}
+    >
+      <div className="w-7 h-7 flex items-center justify-center">
         {icon}
       </div>
       {active && (
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#0866FF] rounded-t-md" />
       )}
-    </div>
+    </button>
   );
 }
 

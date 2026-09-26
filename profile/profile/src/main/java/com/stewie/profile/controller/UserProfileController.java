@@ -3,6 +3,7 @@ package com.stewie.profile.controller;
 import java.util.List;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -58,7 +59,7 @@ public class UserProfileController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     ApiResponse<List<ProfileResponse>> getAllProfiles() {
         return ApiResponse.<List<ProfileResponse>>builder()
                 .result(userProfileService.getAllProfiles())
@@ -69,6 +70,25 @@ public class UserProfileController {
     ApiResponse<ProfileResponse> updateAvatar(@RequestParam("file") MultipartFile file) {
         return ApiResponse.<ProfileResponse>builder()
                 .result(userProfileService.updateAvatar(file))
+                .build();
+    }
+
+    @PostMapping("/users/my-role")
+    ApiResponse<Void> assignMyRole(@RequestParam(defaultValue = "USER") String role) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+        userProfileService.assignRoleToUser(userId, role);
+        return ApiResponse.<Void>builder()
+                .message("Role " + role + " assigned successfully")
+                .build();
+    }
+
+    @PostMapping("/users/{userId}/roles/{roleName}")
+    @PreAuthorize("hasRole('ADMIN')")
+    ApiResponse<Void> assignRoleToUser(@PathVariable String userId, @PathVariable String roleName) {
+        userProfileService.assignRoleToUser(userId, roleName);
+        return ApiResponse.<Void>builder()
+                .message("Role " + roleName + " assigned successfully to user " + userId)
                 .build();
     }
 }

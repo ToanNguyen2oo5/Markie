@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.stewie.event.dto.AvatarUploadRequestedEvent;
 import com.stewie.event.dto.ProfileSyncEvent;
 import com.stewie.event.dto.enums.EventType;
+import com.stewie.profile.configuration.KeycloakProperties;
 import com.stewie.profile.dto.request.UpdateProfileRequest;
 import com.stewie.profile.dto.response.ProfileResponse;
 import com.stewie.profile.entity.UserProfile;
@@ -44,6 +45,9 @@ public class UserProfileService {
     KafkaTemplate<String, Object> kafkaTemplate;
     StringRedisTemplate stringRedisTemplate;
 
+    KeycloakService keycloakService;
+    KeycloakProperties keycloakProperties;
+
     public ProfileResponse syncProfile() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -58,6 +62,11 @@ public class UserProfileService {
         var existing = userProfileRepository.findByUserId(userId);
         if (existing.isPresent()) {
             log.info("Profile already exists for userId: {}", userId);
+            try {
+                keycloakService.assignRoleToUser(userId, keycloakProperties.getDefaultRole());
+            } catch (Exception e) {
+                log.warn("Could not check/assign default role for existing user {}: {}", userId, e.getMessage());
+            }
             return userProfileMapper.toProfileResponse(existing.get());
         }
 
@@ -93,6 +102,13 @@ public class UserProfileService {
 
         profile = userProfileRepository.save(profile);
         log.info("New UserProfile created for userId: {}, profileId: {}", userId, profile.getProfileId());
+
+        // Automatically assign default role (USER) in Keycloak after registration
+        try {
+            keycloakService.assignRoleToUser(userId, keycloakProperties.getDefaultRole());
+        } catch (Exception e) {
+            log.error("Failed to automatically assign default role to user {}: {}", userId, e.getMessage(), e);
+        }
 
         ProfileSyncEvent event = ProfileSyncEvent.builder()
                 .avatar(profile.getAvatar())
@@ -209,5 +225,9 @@ public class UserProfileService {
         }
 
         return userProfileMapper.toProfileResponse(profile);
+    }
+
+    public void assignRoleToUser(String userId, String roleName) {
+        keycloakService.assignRoleToUser(userId, roleName);
     }
 }

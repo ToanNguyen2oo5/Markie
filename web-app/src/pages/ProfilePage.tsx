@@ -4,10 +4,12 @@ import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Envelope, Calendar, Pencil,
   Article, UserCircle, ArrowClockwise, Warning, Camera,
-  ChatCircleText, UserPlus
+  ChatCircleText, SignOut, Check, X
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useProfile, type ProfileData } from '../context/ProfileContext';
+import { FriendActionButton } from '../components/social/FriendActionButton';
+import { FriendsList } from '../components/social/FriendsList';
 import keycloak from '../keycloak';
 
 // ─── GPU-Accelerated Animation Variants (No heavy spring physics loop) ─────────
@@ -97,7 +99,7 @@ const InfoRow = memo(function InfoRow({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function ProfilePage() {
-  const { authenticated } = useAuth();
+  const { authenticated, logout } = useAuth();
   const navigate = useNavigate();
   const { userId } = useParams();
 
@@ -115,8 +117,10 @@ export function ProfilePage() {
   const [otherLoading, setOtherLoading] = useState(false);
   const [otherError, setOtherError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [friendsCount, setFriendsCount] = useState<number | null>(null);
+  const [friendsRefreshKey, setFriendsRefreshKey] = useState(0);
 
-  const isOwner = !userId || (myProfile?.userId && userId === myProfile.userId);
+  const isOwner = !userId || Boolean(myProfile?.userId && userId === myProfile.userId);
 
   useEffect(() => {
     if (!authenticated) {
@@ -206,14 +210,30 @@ export function ProfilePage() {
           <span className="font-bold text-[16px] text-white tracking-tight hidden sm:block">Markie</span>
         </Link>
         <div className="flex-1" />
-        <div className="flex items-center gap-1.5 text-zinc-400">
-          <ArrowLeft className="w-4 h-4" />
+        <Link
+          to="/feed"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 border border-transparent hover:border-zinc-700/50 transition-all cursor-pointer group active:scale-[0.98]"
+          title="Quay lại trang chủ"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           <span className="text-sm font-medium">
-            {isOwner ? 'Hồ sơ cá nhân' : `Trang của ${activeFullName || 'người dùng'}`}
+            Quay lại trang chủ
           </span>
-        </div>
+        </Link>
         <div className="flex-1" />
-        <div className="w-[88px]" />
+        <div className="w-[88px] flex justify-end">
+          {isOwner && (
+            <button
+              type="button"
+              onClick={logout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+              title="Đăng xuất khỏi tài khoản"
+            >
+              <SignOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Đăng xuất</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* ── Main ───────────────────────────────────────────── */}
@@ -358,13 +378,12 @@ export function ProfilePage() {
                     </button>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0866FF] hover:bg-[#0866FF]/90 rounded-xl text-sm font-semibold text-white transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        Thêm bạn bè
-                      </button>
+                      <FriendActionButton
+                        targetUserId={activeProfile.userId}
+                        targetUsername={activeProfile.username}
+                        targetName={activeFullName}
+                        onRelationshipChange={() => setFriendsRefreshKey((k) => k + 1)}
+                      />
                       <button
                         type="button"
                         className="flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 transition-all cursor-pointer"
@@ -393,9 +412,22 @@ export function ProfilePage() {
                   className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 mt-6"
                 >
                   <StatChip label="Bài viết" value="—" />
-                  <StatChip label="Bạn bè" value="—" />
+                  <StatChip
+                    label="Bạn bè"
+                    value={friendsCount !== null ? String(friendsCount) : '—'}
+                  />
                   <StatChip label="Đang theo dõi" value="—" />
                   <StatChip label="Người theo dõi" value="—" />
+                </motion.div>
+
+                {/* ── Friends List Section ── */}
+                <motion.div variants={fadeUp} className="px-6 mt-6">
+                  <FriendsList
+                    key={`${activeProfile.userId}-${friendsRefreshKey}`}
+                    userId={activeProfile.userId}
+                    isOwner={isOwner}
+                    onTotalFriendsChange={(count) => setFriendsCount(count)}
+                  />
                 </motion.div>
 
                 {/* ── Edit Modal only for owner ── */}

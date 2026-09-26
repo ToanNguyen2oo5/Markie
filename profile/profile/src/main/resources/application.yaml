@@ -38,3 +38,11 @@ spring:
   app:
     file-service:
       url: http://localhost:8084
+
+idp:
+  url: ${IDP_URL:http://localhost:8280}
+  realm: ${IDP_REALM:markie}
+  admin-client-id: ${IDP_ADMIN_CLIENT_ID:admin-cli}
+  admin-username: ${IDP_ADMIN_USERNAME:admin}
+  admin-password: ${IDP_ADMIN_PASSWORD:admin}
+  default-role: ${IDP_DEFAULT_ROLE:USER}

@@ -1,4 +1,4 @@
-﻿package com.stewie.profile.controller;
+package com.stewie.profile.controller;
 
 import java.util.List;
 
@@ -27,18 +27,14 @@ public class SocialController {
     @PostMapping("/follow/{toUserId}")
     ApiResponse<Void> followUser(@PathVariable String toUserId) {
         socialService.followUser(toUserId);
-        return ApiResponse.<Void>builder()
-                .message("Followed successfully")
-                .build();
+        return ApiResponse.<Void>builder().message("Followed successfully").build();
     }
 
     /** Bo theo doi mot user khac. */
     @DeleteMapping("/follow/{toUserId}")
     ApiResponse<Void> unfollowUser(@PathVariable String toUserId) {
         socialService.unfollowUser(toUserId);
-        return ApiResponse.<Void>builder()
-                .message("Unfollowed successfully")
-                .build();
+        return ApiResponse.<Void>builder().message("Unfollowed successfully").build();
     }
 
     // ── 2. FRIEND REQUEST ───────────────────────────────────────────────────────
@@ -47,18 +43,14 @@ public class SocialController {
     @PostMapping("/friends/request/{toUserId}")
     ApiResponse<Void> sendFriendRequest(@PathVariable String toUserId) {
         socialService.sendFriendRequest(toUserId);
-        return ApiResponse.<Void>builder()
-                .message("Friend request sent")
-                .build();
+        return ApiResponse.<Void>builder().message("Friend request sent").build();
     }
 
     /** Huy loi moi ket ban da gui (nguoi gui thuc hien). */
     @DeleteMapping("/friends/request/{toUserId}")
     ApiResponse<Void> cancelFriendRequest(@PathVariable String toUserId) {
         socialService.cancelFriendRequest(toUserId);
-        return ApiResponse.<Void>builder()
-                .message("Friend request cancelled")
-                .build();
+        return ApiResponse.<Void>builder().message("Friend request cancelled").build();
     }
 
     /**
@@ -68,9 +60,7 @@ public class SocialController {
     @PostMapping("/friends/accept/{fromUserId}")
     ApiResponse<Void> acceptFriendRequest(@PathVariable String fromUserId) {
         socialService.acceptFriendRequest(fromUserId);
-        return ApiResponse.<Void>builder()
-                .message("Friend request accepted")
-                .build();
+        return ApiResponse.<Void>builder().message("Friend request accepted").build();
     }
 
     /**
@@ -80,9 +70,7 @@ public class SocialController {
     @DeleteMapping("/friends/reject/{fromUserId}")
     ApiResponse<Void> rejectFriendRequest(@PathVariable String fromUserId) {
         socialService.rejectFriendRequest(fromUserId);
-        return ApiResponse.<Void>builder()
-                .message("Friend request rejected")
-                .build();
+        return ApiResponse.<Void>builder().message("Friend request rejected").build();
     }
 
     // ── 3. UNFRIEND ──────────────────────────────────────────────────────────────
@@ -91,9 +79,7 @@ public class SocialController {
     @DeleteMapping("/friends/{otherUserId}")
     ApiResponse<Void> unfriend(@PathVariable String otherUserId) {
         socialService.unfriend(otherUserId);
-        return ApiResponse.<Void>builder()
-                .message("Unfriended successfully")
-                .build();
+        return ApiResponse.<Void>builder().message("Unfriended successfully").build();
     }
 
     // ── 4. QUERIES ───────────────────────────────────────────────────────────────

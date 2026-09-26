@@ -39,12 +39,25 @@ export function LandingPage() {
       const checkData = await checkRes.json();
 
       if (checkData.code === 1000) {
-        // Existing user (login) — profile already exists, skip sync
+        // Existing user: check if USER or ADMIN role is in token, if not sync to assign & refresh
+        const realmRoles = (keycloak.tokenParsed as any)?.realm_access?.roles || [];
+        if (!realmRoles.includes('USER') && !realmRoles.includes('ADMIN')) {
+          await fetch('/profile/users/sync-profile', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${keycloak.token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          try {
+            await keycloak.updateToken(-1);
+          } catch { /* ignore */ }
+        }
         goToFeed();
         return;
       }
 
-      // Step 2: Profile not found → new user just registered, create profile
+      // Step 2: Profile not found → new user just registered, create profile & assign role
       if (checkData.code === 1012) {
         await fetch('/profile/users/sync-profile', {
           method: 'POST',
@@ -53,6 +66,10 @@ export function LandingPage() {
             'Content-Type': 'application/json',
           },
         });
+        try {
+          // Token was issued before role was mapped in Keycloak, force refresh to load new role
+          await keycloak.updateToken(-1);
+        } catch { /* ignore */ }
       }
     } catch (err) {
       console.error('Profile check/sync error:', err);

@@ -1,4 +1,4 @@
-﻿package com.stewie.profile.service;
+package com.stewie.profile.service;
 
 import java.util.List;
 
@@ -33,9 +33,7 @@ public class SocialService {
     }
 
     private void ensureUserExists(String userId) {
-        userProfileRepository
-                .findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        userProfileRepository.findByUserId(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
 
     // ── 1. FOLLOW / UNFOLLOW ────────────────────────────────────────────────────

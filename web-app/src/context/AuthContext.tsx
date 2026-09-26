@@ -26,7 +26,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const logout = () => keycloak.logout({ redirectUri: window.location.origin });
+  const logout = async () => {
+    const redirectUri = window.location.origin;
+    try {
+      // OIDC logout in Keycloak:
+      // If idToken is expired or rejected, keycloak-js sending it as id_token_hint causes
+      // Keycloak error: "Invalid parameter: id_token_hint".
+      // Clearing idToken ensures Keycloak relies on client_id and post_logout_redirect_uri.
+      keycloak.idToken = undefined;
+      keycloak.idTokenParsed = undefined;
+      await keycloak.logout({ redirectUri });
+    } catch {
+      // Fallback: direct navigation to Keycloak logout endpoint with client_id & post_logout_redirect_uri
+      const baseUrl = (keycloak.authServerUrl || 'http://localhost:8280').replace(/\/$/, '');
+      const realm = keycloak.realm || 'markie';
+      const clientId = keycloak.clientId || 'markie_webapp';
+      const logoutUrl = `${baseUrl}/realms/${realm}/protocol/openid-connect/logout?client_id=${clientId}&post_logout_redirect_uri=${encodeURIComponent(redirectUri)}`;
+      window.location.href = logoutUrl;
+    }
+  };
 
   if (!ready) {
     return (

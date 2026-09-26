@@ -7,6 +7,7 @@ import LandingPage from './pages/LandingPage';
 import { NewsFeedPage } from './pages/NewsFeedPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SearchPage } from './pages/SearchPage';
+import { FriendsPage } from './pages/FriendsPage';
 
 export function App() {
   return (
@@ -17,6 +18,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/feed" element={<NewsFeedPage />} />
+            <Route path="/friends" element={<FriendsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/:userId" element={<ProfilePage />} />
             <Route path="/search" element={<SearchPage />} />
