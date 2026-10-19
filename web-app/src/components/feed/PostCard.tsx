@@ -1,5 +1,5 @@
 import { useState, memo } from 'react';
-import { DotsThree, GlobeHemisphereWest, ThumbsUp, ChatCircle, ShareFat } from '@phosphor-icons/react';
+import { ChatCircle, Copy, Check } from '@phosphor-icons/react';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { CommentModal } from './CommentModal';
 import { useProfile } from '../../context/ProfileContext';
@@ -17,13 +17,12 @@ function formatTime(dateString: string): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffMins < 1) return 'Vừa xong';
-  if (diffMins < 60) return `${diffMins} phút`;
-  if (diffHours < 24) return `${diffHours} giờ`;
-  if (diffDays < 7) return `${diffDays} ngày`;
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  if (diffDays < 7) return `${diffDays} ngày trước`;
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// DiceBear SVG — instant, no external HTTP request
 function getAvatarUrl(userId: string): string {
   return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}&size=40`;
 }
@@ -31,80 +30,99 @@ function getAvatarUrl(userId: string): string {
 export const PostCard = memo(function PostCard({ post }: PostCardProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const isMyPost = profile?.userId === post.userId;
   const postAvatarUrl = isMyPost ? myAvatarUrl : getAvatarUrl(post.userId);
   const displayName = post.username ?? 'Người dùng';
   const timeAgo = formatTime(post.createdDate);
 
+  const handleCopyLink = async () => {
+    const postUrl = `${window.location.origin}/feed#post-${post.id}`;
+    try {
+      await navigator.clipboard.writeText(postUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
-    <div className="w-full bg-[#242526] rounded-xl shadow-sm border border-[#393A3B]/30 flex flex-col">
+    <article
+      id={`post-${post.id}`}
+      className="w-full genv-card rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800/80 flex flex-col transition-all hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between p-4">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
           <img
             src={postAvatarUrl}
             alt={displayName}
-            className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
           />
-          <div className="flex flex-col leading-tight">
-            <h4 className="text-[#E4E6EB] font-semibold text-[15px] cursor-pointer hover:underline">
+          <div className="flex flex-col">
+            <h4 className="font-heading text-slate-900 dark:text-slate-100 font-semibold text-[15px] leading-snug">
               {displayName}
             </h4>
-            <div className="flex items-center gap-1 text-[#B0B3B8] text-[13px] mt-0.5">
-              <span className="hover:underline cursor-pointer">{timeAgo}</span>
-              <span>·</span>
-              <GlobeHemisphereWest className="w-3.5 h-3.5" />
-            </div>
+            <span className="font-code text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              {timeAgo}
+            </span>
           </div>
         </div>
 
-        <button className="w-9 h-9 rounded-full hover:bg-[#3A3B3C] flex items-center justify-center text-[#B0B3B8] transition-colors cursor-pointer">
-          <DotsThree className="w-6 h-6" weight="bold" />
+        {/* Copy Link Action */}
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          title="Sao chép liên kết bài viết"
+          className="relative px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5 text-xs transition-colors cursor-pointer"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-code text-emerald-600 dark:text-emerald-400 font-medium">Đã chép</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+              <span className="hidden sm:inline font-heading text-slate-600 dark:text-slate-400">Liên kết</span>
+            </>
+          )}
         </button>
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-4">
-        <p className="text-[#E4E6EB] text-[15px] whitespace-pre-wrap leading-relaxed">
+      <div className="pt-3.5 pb-2">
+        <p className="font-sans text-slate-800 dark:text-slate-200 text-[15px] whitespace-pre-wrap leading-relaxed">
           {post.content}
         </p>
       </div>
 
       {/* Divider */}
-      <div className="border-t border-[#3E4042] mx-4" />
-
-      {/* Action Buttons */}
-      <div className="p-1 px-4 flex items-center justify-between gap-1">
-        <ActionButton icon={<ThumbsUp className="w-5 h-5" />} text="Thích" />
-        <ActionButton 
-          icon={<ChatCircle className="w-5 h-5" />} 
-          text="Bình luận" 
+      <div className="border-t border-slate-100 dark:border-slate-800/80 mt-3 pt-3 flex items-center justify-between">
+        {/* Comment Action Button */}
+        <button
+          type="button"
           onClick={() => setIsCommentModalOpen(true)}
-        />
-        <ActionButton icon={<ShareFat className="w-5 h-5" />} text="Chia sẻ" />
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all text-xs font-heading font-medium cursor-pointer"
+        >
+          <ChatCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span>Bình luận</span>
+        </button>
+
+        <span className="font-code text-[11px] text-slate-400 dark:text-slate-600">
+          ID: {post.id.slice(0, 8)}
+        </span>
       </div>
 
-      {/* Comment Modal — rendered via portal-like pattern to avoid cascade re-renders */}
+      {/* Comment Modal */}
       {isCommentModalOpen && (
         <CommentModal 
           postId={post.id} 
           onClose={() => setIsCommentModalOpen(false)} 
         />
       )}
-    </div>
+    </article>
   );
 });
-
-const ActionButton = memo(function ActionButton({ icon, text, onClick }: { icon: React.ReactNode; text: string; onClick?: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-[#3A3B3C] rounded-lg transition-colors cursor-pointer text-[#B0B3B8] group hover:text-[#E4E6EB]"
-    >
-      {icon}
-      <span className="font-medium text-[15px]">{text}</span>
-    </button>
-  );
-});
-

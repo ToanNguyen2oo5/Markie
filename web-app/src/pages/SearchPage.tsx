@@ -382,7 +382,7 @@ export function SearchPage() {
               <div className="w-20 h-20 rounded-full bg-[#3A3B3C] flex items-center justify-center mb-5">
                 <MagnifyingGlass className="w-10 h-10 text-[#B0B3B8]" />
               </div>
-              <p className="text-[#E4E6EB] font-semibold text-xl">Tìm kiếm trên Markie</p>
+              <p className="text-[#E4E6EB] font-semibold text-xl">Tìm kiếm trên GenV</p>
               <p className="text-[#B0B3B8] text-sm mt-2">Nhập từ khóa để tìm bài viết và người dùng.</p>
             </div>
           )}

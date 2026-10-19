@@ -206,8 +206,8 @@ export function ProfilePage() {
           to="/feed"
           className="flex items-center gap-2 group"
         >
-          <img src="/favicon.svg" alt="Markie logo" className="w-7 h-7 group-hover:scale-110 transition-transform duration-200" />
-          <span className="font-bold text-[16px] text-white tracking-tight hidden sm:block">Markie</span>
+          <img src="/favicon.svg" alt="GenV logo" className="w-7 h-7 group-hover:scale-110 transition-transform duration-200" />
+          <span className="font-bold text-[16px] text-white tracking-tight hidden sm:block">GenV</span>
         </Link>
         <div className="flex-1" />
         <Link

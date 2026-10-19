@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-lg tracking-tight text-white">Markie</span>
+              <span className="font-bold text-lg tracking-tight text-white">GenV</span>
               <span className="text-[10px] uppercase tracking-wider font-mono font-semibold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 Social
               </span>

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ProfileProvider } from './context/ProfileContext';
@@ -11,9 +12,10 @@ import { FriendsPage } from './pages/FriendsPage';
 
 export function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <ProfileProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <ProfileProvider>
           <ToastContainer />
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -26,6 +28,7 @@ export function App() {
         </ProfileProvider>
       </ToastProvider>
     </AuthProvider>
+  </ThemeProvider>
   );
 }
 

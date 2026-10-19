@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { VideoCamera, ImageSquare, Smiley, X, ArrowClockwise } from '@phosphor-icons/react';
+import { PencilSimpleLine, X, ArrowClockwise, PaperPlaneTilt } from '@phosphor-icons/react';
 import keycloak from '../../keycloak';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -10,7 +10,7 @@ interface CreatePostCardProps {
 }
 
 export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
-  const { avatarUrl, fullName } = useProfile();
+  const { avatarUrl, fullName, profile } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -18,7 +18,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    if (!content.trim() || submitting || content.length > 500) return;
     setSubmitting(true);
     setError(null);
 
@@ -35,7 +35,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
           Authorization: `Bearer ${keycloak.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: content.trim() }),
       });
 
       const data = await res.json();
@@ -55,24 +55,28 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
 
   return (
     <>
-      {/* Trigger Card */}
-      <div className="w-full bg-[#242526] rounded-xl shadow-sm border border-[#393A3B]/30 p-4">
+      {/* Trigger Card - Dynamic Light/Dark Glassmorphism */}
+      <div className="w-full genv-card rounded-2xl p-4 transition-all">
         <div className="flex items-center gap-3">
-          <img src={avatarUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+          <img
+            src={avatarUrl}
+            alt="Profile"
+            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800 flex-shrink-0"
+          />
           <button
-            onClick={() => { setModalOpen(true); setTimeout(() => textareaRef.current?.focus(), 50); }}
-            className="flex-1 bg-[#3A3B3C] hover:bg-[#4E4F50] text-[#B0B3B8] text-left rounded-full px-4 py-2.5 text-[15px] transition-colors cursor-pointer outline-none"
+            type="button"
+            onClick={() => {
+              setModalOpen(true);
+              setTimeout(() => textareaRef.current?.focus(), 60);
+            }}
+            className="flex-1 bg-slate-50 dark:bg-slate-900/90 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 text-left rounded-xl px-4 py-2.5 text-sm transition-all duration-200 cursor-pointer border border-slate-200/90 dark:border-slate-800/80 flex items-center justify-between group shadow-2xs"
           >
-            Bạn đang nghĩ gì thế?
+            <span>Chia sẻ suy nghĩ của bạn với cộng đồng...</span>
+            <div className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 font-medium">
+              <PencilSimpleLine className="w-4 h-4" />
+              <span className="hidden sm:inline font-heading">Viết bài</span>
+            </div>
           </button>
-        </div>
-
-        <div className="border-b border-[#3E4042] my-3" />
-
-        <div className="flex items-center justify-between gap-1">
-          <ActionButton icon={<VideoCamera className="w-6 h-6 text-[#F3425F]" weight="fill" />} text="Video trực tiếp" onClick={() => setModalOpen(true)} />
-          <ActionButton icon={<ImageSquare className="w-6 h-6 text-[#45BD62]" weight="fill" />} text="Ảnh/video" onClick={() => setModalOpen(true)} />
-          <ActionButton icon={<Smiley className="w-6 h-6 text-[#F7B928]" weight="fill" />} text="Cảm xúc" onClick={() => setModalOpen(true)} />
         </div>
       </div>
 
@@ -87,88 +91,114 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !submitting && setModalOpen(false)}
-              className="fixed inset-0 bg-black/70 z-50"
+              className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm z-50"
             />
 
-            {/* Modal */}
+            {/* Modal Box */}
             <motion.div
               key="modal"
-              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              initial={{ opacity: 0, scale: 0.95, y: -16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-[500px] bg-[#242526] rounded-xl shadow-2xl border border-[#393A3B]"
+              exit={{ opacity: 0, scale: 0.95, y: -16 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-[520px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden mx-4 text-slate-900 dark:text-slate-100"
             >
               {/* Modal Header */}
-              <div className="relative flex items-center justify-center py-4 border-b border-[#3E4042]">
-                <h2 className="text-[#E4E6EB] font-bold text-[17px]">Tạo bài viết</h2>
+              <div className="relative flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+                <h2 className="font-heading font-bold text-slate-900 dark:text-slate-100 text-[16px] tracking-tight">
+                  Tạo bài viết mới
+                </h2>
                 <button
+                  type="button"
                   onClick={() => !submitting && setModalOpen(false)}
-                  className="absolute right-4 w-9 h-9 rounded-full bg-[#3A3B3C] hover:bg-[#4E4F50] flex items-center justify-center text-[#E4E6EB] transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                  aria-label="Đóng"
                 >
-                  <X weight="bold" className="w-5 h-5" />
+                  <X weight="bold" className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Modal Author */}
-              <div className="flex items-center gap-3 p-4">
-                <img src={avatarUrl} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
-                <div>
-                  <p className="text-[#E4E6EB] font-semibold text-[15px]">{fullName || 'Người dùng'}</p>
-                  <span className="text-xs bg-[#3A3B3C] text-[#E4E6EB] font-medium px-2 py-0.5 rounded-md">🌍 Công khai</span>
+              {/* Modal Author Info */}
+              <div className="flex items-center gap-3 px-5 pt-4">
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700/60"
+                />
+                <div className="flex flex-col">
+                  <p className="font-heading text-slate-900 dark:text-slate-100 font-semibold text-sm">
+                    {fullName || profile?.username || 'Người dùng'}
+                  </p>
+                  <span className="font-code text-xs text-slate-500 dark:text-slate-400">
+                    @{profile?.username || 'user'}
+                  </span>
                 </div>
               </div>
 
               {/* Textarea */}
-              <div className="px-4 pb-4">
+              <div className="p-5">
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Bạn đang nghĩ gì thế?"
+                  placeholder="Bạn đang có ý tưởng hoặc chia sẻ gì mới?"
                   rows={5}
-                  className="w-full bg-transparent text-[#E4E6EB] placeholder-[#B0B3B8] text-[18px] outline-none resize-none leading-relaxed"
+                  className="w-full bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[15px] outline-none resize-none leading-relaxed"
                 />
               </div>
 
-              {/* Error message */}
+              {/* Error Alert */}
               {error && (
-                <div className="mx-4 mb-3 bg-red-900/30 border border-red-800 text-red-300 text-sm rounded-lg px-3 py-2">
+                <div className="mx-5 mb-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-300 text-xs rounded-xl px-3.5 py-2.5">
                   {error}
                 </div>
               )}
 
-              {/* Character count & Submit */}
-              <div className="p-4 pt-0 flex items-center justify-between gap-3">
-                <span className={`text-sm ${content.length > 450 ? 'text-red-400' : 'text-[#B0B3B8]'}`}>
+              {/* Footer: Character Count & Submit */}
+              <div className="px-5 pb-5 pt-2 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800/60">
+                <span
+                  className={`font-code text-xs ${
+                    content.length > 450
+                      ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                      : 'text-slate-400 dark:text-slate-500'
+                  }`}
+                >
                   {content.length} / 500
                 </span>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!content.trim() || submitting || content.length > 500}
-                  className="flex-1 py-2.5 bg-[#0866FF] hover:bg-[#0756d6] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[15px] rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <ArrowClockwise className="w-4 h-4 animate-spin" />
-                      Đang đăng...
-                    </>
-                  ) : 'Đăng'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    disabled={submitting}
+                    className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!content.trim() || submitting || content.length > 500}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-heading font-semibold text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm shadow-indigo-600/30 active:scale-[0.98]"
+                  >
+                    {submitting ? (
+                      <>
+                        <ArrowClockwise className="w-4 h-4 animate-spin" />
+                        <span>Đang đăng...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PaperPlaneTilt weight="fill" className="w-4 h-4" />
+                        <span>Đăng bài</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-function ActionButton({ icon, text, onClick }: { icon: React.ReactNode, text: string, onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex-1 flex items-center justify-center gap-2 py-2 px-1 hover:bg-[#3A3B3C] rounded-lg transition-colors cursor-pointer">
-      {icon}
-      <span className="text-[#B0B3B8] font-medium text-[15px] hidden sm:block">{text}</span>
-    </button>
   );
 }

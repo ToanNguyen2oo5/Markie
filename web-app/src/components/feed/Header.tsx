@@ -3,19 +3,17 @@ import {
   MagnifyingGlass,
   House,
   Users,
-  MonitorPlay,
-  Storefront,
-  UsersThree,
-  List,
-  MessengerLogo,
-  Bell,
   User,
   SignOut,
+  Sparkle,
+  Sun,
+  Moon,
 } from '@phosphor-icons/react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SearchSuggestionDropdown } from '../search/SearchSuggestionDropdown';
 import keycloak from '../../keycloak';
 import type { SearchPostResult, SearchUserResult, SearchApiResponse } from '../../types/searchTypes';
@@ -23,6 +21,7 @@ import type { SearchPostResult, SearchUserResult, SearchApiResponse } from '../.
 export function Header() {
   const { profile, avatarUrl, fullName } = useProfile();
   const { logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -154,27 +153,27 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-[#242526] border-b border-[#393A3B] z-50 flex items-center px-4 justify-between shadow-sm">
+    <header className="fixed top-0 left-0 right-0 h-14 bg-white/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800/80 z-50 flex items-center px-4 sm:px-6 justify-between shadow-[0_1px_3px_0_rgba(15,23,42,0.03)] dark:shadow-none transition-colors">
       
-      {/* Left Section: Logo & Search */}
-      <div className="flex items-center gap-2 w-[320px]">
-        <Link to="/feed" className="flex items-center gap-2 group">
-          <img
-            src="/favicon.svg"
-            alt="Markie logo"
-            className="w-8 h-8 flex-shrink-0 group-hover:scale-110 transition-transform duration-200"
-          />
-          <span className="font-bold text-[17px] text-white tracking-tight hidden sm:block">
-            Markie
+      {/* Left Section: Logo & Minimalist Search */}
+      <div className="flex items-center gap-3 w-auto sm:w-[320px]">
+        <Link to="/feed" className="flex items-center gap-2 group flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-600/15 border border-indigo-200/60 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-600/25 transition-colors shadow-xs">
+            <Sparkle weight="fill" className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <span className="font-heading font-bold text-[17px] text-slate-900 dark:text-slate-100 tracking-tight hidden sm:flex items-center gap-1.5">
+            GenV
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Hệ thống trực tuyến" />
           </span>
         </Link>
+
         <div ref={searchContainerRef} className="relative hidden md:flex items-center">
           <button
             onClick={() => handleSearch()}
-            className="absolute left-3 text-[#A8AB81] hover:text-[#E4E6EB] transition-colors cursor-pointer z-10"
+            className="absolute left-3 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer z-10"
             aria-label="Tìm kiếm"
           >
-            <MagnifyingGlass className="w-5 h-5" />
+            <MagnifyingGlass className="w-4 h-4" />
           </button>
           <input
             type="text"
@@ -184,8 +183,8 @@ export function Header() {
               if (searchValue.trim()) setIsOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Tìm kiếm trên Markie"
-            className="bg-[#3A3B3C] text-[#E4E6EB] placeholder-[#A8AB81] h-10 w-[240px] rounded-full pl-10 pr-4 outline-none focus:w-[280px] focus:ring-2 focus:ring-[#0866FF]/40 transition-all duration-300"
+            placeholder="Tìm kiếm bài viết, bạn bè..."
+            className="bg-slate-100/90 dark:bg-slate-900/80 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm h-9 w-[220px] rounded-xl pl-9 pr-3 outline-none border border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 dark:focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/15 focus:w-[260px] transition-all duration-200"
           />
 
           {/* Search Suggestion Dropdown */}
@@ -203,41 +202,48 @@ export function Header() {
         </div>
       </div>
 
-      {/* Center Section: Navigation Tabs */}
-      <div className="hidden md:flex items-center justify-center h-full flex-1 max-w-[600px] gap-2">
+      {/* Center Section: Core Functional Tabs (Feed & Friends) */}
+      <nav className="flex items-center justify-center h-full gap-1">
         <NavTab
-          icon={<House weight={isFeed ? 'fill' : 'regular'} />}
+          icon={<House weight={isFeed ? 'fill' : 'regular'} className="w-4 h-4" />}
+          label="Bảng tin"
           active={isFeed}
           onClick={() => navigate('/feed')}
-          title="Bảng tin"
         />
         <NavTab
-          icon={<Users weight={isFriends ? 'fill' : 'regular'} />}
+          icon={<Users weight={isFriends ? 'fill' : 'regular'} className="w-4 h-4" />}
+          label="Đề xuất bạn bè"
           active={isFriends}
           onClick={() => navigate('/friends')}
-          title="Đề xuất bạn bè"
         />
-        <NavTab icon={<MonitorPlay />} title="Video" />
-        <NavTab icon={<Storefront />} title="Marketplace" />
-        <NavTab icon={<UsersThree />} title="Nhóm" />
-      </div>
+      </nav>
 
-      {/* Right Section: Actions & Profile */}
-      <div className="flex items-center justify-end gap-2 w-[320px]">
-        <div className="hidden md:flex items-center gap-2">
-           <IconButton icon={<List />} />
-           <IconButton icon={<MessengerLogo weight="fill" />} />
-           <IconButton icon={<Bell weight="fill" />} badge={3} />
-        </div>
+      {/* Right Section: Theme Toggle & User Profile */}
+      <div className="flex items-center justify-end gap-2.5 w-auto sm:w-[320px]">
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+          aria-label="Đổi giao diện sáng tối"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all cursor-pointer shadow-2xs"
+        >
+          {theme === 'dark' ? (
+            <Sun weight="fill" className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
+          ) : (
+            <Moon weight="fill" className="w-4 h-4 text-indigo-600 transition-transform hover:-rotate-12" />
+          )}
+        </button>
+
         {/* Profile Avatar & Dropdown Menu */}
-        <div ref={profileMenuRef} className="relative ml-2">
+        <div ref={profileMenuRef} className="relative">
           <button
             type="button"
             onClick={() => setProfileMenuOpen((prev) => !prev)}
-            className={`w-10 h-10 rounded-full overflow-hidden transition-all duration-200 cursor-pointer block border ${
+            className={`w-9 h-9 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer block border ${
               profileMenuOpen
-                ? 'ring-2 ring-blue-500 border-transparent shadow-lg shadow-blue-500/20'
-                : 'border-zinc-700/60 hover:opacity-95 hover:ring-2 hover:ring-blue-500/50'
+                ? 'ring-2 ring-indigo-500 border-transparent shadow-sm shadow-indigo-500/20'
+                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:ring-2 hover:ring-indigo-500/20'
             }`}
             title="Tài khoản cá nhân"
             aria-expanded={profileMenuOpen}
@@ -248,11 +254,11 @@ export function Header() {
           <AnimatePresence>
             {profileMenuOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                initial={{ opacity: 0, y: 6, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="absolute right-0 mt-2 w-64 bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 rounded-2xl p-2 shadow-2xl shadow-black/70 z-50 overflow-hidden"
+                exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 mt-2 w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-2 shadow-xl shadow-slate-900/10 dark:shadow-black/80 z-50 overflow-hidden"
               >
                 {/* User quick profile banner */}
                 <div
@@ -260,22 +266,41 @@ export function Header() {
                     setProfileMenuOpen(false);
                     navigate('/profile');
                   }}
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-800/80 transition-colors cursor-pointer group"
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-zinc-800 border border-zinc-700/60 group-hover:ring-2 group-hover:ring-blue-500/40 transition-all">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 group-hover:ring-2 group-hover:ring-indigo-500/30 transition-all">
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-zinc-100 group-hover:text-blue-400 truncate transition-colors">
+                    <p className="font-heading text-sm font-semibold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate transition-colors">
                       {fullName || profile?.username || 'Người dùng'}
                     </p>
-                    <p className="text-xs text-zinc-400 truncate">
+                    <p className="font-code text-xs text-slate-500 dark:text-slate-400 truncate">
                       @{profile?.username || 'user'}
                     </p>
                   </div>
                 </div>
 
-                <div className="my-1.5 border-t border-zinc-800/80" />
+                <div className="my-1.5 border-t border-slate-200 dark:border-slate-800" />
+
+                {/* Quick Theme Switch inside menu */}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2.5">
+                    {theme === 'dark' ? (
+                      <Sun className="w-4 h-4 text-amber-400" />
+                    ) : (
+                      <Moon className="w-4 h-4 text-indigo-600" />
+                    )}
+                    <span>Giao diện: {theme === 'dark' ? 'Tối' : 'Sáng'}</span>
+                  </span>
+                  <span className="font-code text-[11px] text-slate-400 dark:text-slate-500">
+                    Đổi
+                  </span>
+                </button>
 
                 {/* Actions */}
                 <button
@@ -284,10 +309,10 @@ export function Header() {
                     setProfileMenuOpen(false);
                     navigate('/profile');
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-xl transition-colors cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl transition-colors cursor-pointer"
                 >
-                  <User className="w-4 h-4 text-blue-400" />
-                  <span>Xem trang cá nhân</span>
+                  <User className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Trang cá nhân</span>
                 </button>
 
                 <button
@@ -296,9 +321,9 @@ export function Header() {
                     setProfileMenuOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer active:scale-[0.98]"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer active:scale-[0.98]"
                 >
-                  <SignOut className="w-4 h-4 text-rose-400" />
+                  <SignOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   <span>Đăng xuất</span>
                 </button>
               </motion.div>
@@ -313,47 +338,27 @@ export function Header() {
 
 function NavTab({
   icon,
+  label,
   active,
   onClick,
-  title,
 }: {
   icon: React.ReactNode;
+  label: string;
   active?: boolean;
   onClick?: () => void;
-  title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={title}
-      className={`relative h-full w-[110px] flex items-center justify-center cursor-pointer group transition-colors ${
+      className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-sm font-medium transition-all duration-200 cursor-pointer ${
         active
-          ? 'text-[#0866FF]'
-          : 'text-[#B0B3B8] hover:bg-[#3A3B3C] hover:rounded-lg my-1'
+          ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-600/10 border border-indigo-200/80 dark:border-indigo-500/30 shadow-xs'
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 border border-transparent'
       }`}
     >
-      <div className="w-7 h-7 flex items-center justify-center">
-        {icon}
-      </div>
-      {active && (
-        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#0866FF] rounded-t-md" />
-      )}
-    </button>
-  );
-}
-
-function IconButton({ icon, badge }: { icon: React.ReactNode, badge?: number }) {
-  return (
-    <button className="w-10 h-10 rounded-full bg-[#3A3B3C] hover:bg-[#4E4F50] flex items-center justify-center text-[#E4E6EB] transition-colors relative cursor-pointer">
-      <div className="w-5 h-5">
-        {icon}
-      </div>
-      {badge && (
-        <span className="absolute -top-1 -right-1 bg-[#E41E3F] text-white text-[11px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
-          {badge}
-        </span>
-      )}
+      {icon}
+      <span className="hidden sm:inline font-heading text-[13px]">{label}</span>
     </button>
   );
 }

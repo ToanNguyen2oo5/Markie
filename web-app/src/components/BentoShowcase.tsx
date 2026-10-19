@@ -17,7 +17,7 @@ export const BentoShowcase: React.FC = () => {
       <div className="space-y-4 max-w-xl">
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono">
           <Sparkle weight="fill" className="w-3.5 h-3.5 text-blue-400" />
-          <span>Markie Social Network</span>
+          <span>GenV Social Network</span>
         </div>
         
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.08]">
@@ -26,7 +26,7 @@ export const BentoShowcase: React.FC = () => {
         </h1>
         
         <p className="text-base text-zinc-400 leading-relaxed font-normal">
-          Tham gia cộng đồng Markie ngay hôm nay để kết nối với những người bạn mới, 
+          Tham gia cộng đồng GenV ngay hôm nay để kết nối với những người bạn mới, 
           chia sẻ những câu chuyện thú vị và khám phá thế giới xung quanh bạn.
         </p>
       </div>

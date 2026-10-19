@@ -28,7 +28,7 @@ export const AuthSuccessModal: React.FC<AuthSuccessModalProps> = ({
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">Trang cá nhân</h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Chào mừng bạn đến với cộng đồng Markie
+            Chào mừng bạn đến với cộng đồng GenV
           </p>
         </div>
 
