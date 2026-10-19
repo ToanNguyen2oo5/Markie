@@ -2,16 +2,25 @@ server:
   port: 8086
   servlet:
     context-path: /chat
+
 spring:
   application:
     name: chat-service
   data:
     mongodb:
-      uri: mongodb://root:root@localhost:27017/chat-service?authSource=admin
+      uri: ${MONGODB_URI:mongodb://root:root@localhost:27018/chat-service?authSource=admin}
       auto-index-creation: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8280/realms/markie}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8280/realms/markie/protocol/openid-connect/certs}
+
 app:
   services:
     profile:
-      url: http://localhost:8081/profile
-    identity:
-      url: http://localhost:8080/identity
+      url: ${PROFILE_SERVICE_URL:http://localhost:8081/profile}
+  socket:
+    host: ${SOCKET_HOST:0.0.0.0}
+    port: ${SOCKET_PORT:8099}

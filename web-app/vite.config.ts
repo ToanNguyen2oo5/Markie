@@ -31,6 +31,10 @@ export default defineConfig({
       '/search': {
         target: 'http://localhost:8888',
         changeOrigin: true,
+      },
+      '/chat': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
       }
     }
   }
