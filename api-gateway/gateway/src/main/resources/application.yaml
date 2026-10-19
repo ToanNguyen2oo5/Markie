@@ -23,6 +23,10 @@ spring:
           uri: http://localhost:8085
           predicates:
             - Path=/search/**
+        - id: chat_service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/chat/**
   security:
     oauth2:
       resourceserver:
