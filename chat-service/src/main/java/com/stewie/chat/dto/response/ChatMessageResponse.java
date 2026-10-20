@@ -2,6 +2,7 @@ package com.stewie.chat.dto.response;
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.stewie.chat.entity.ParticipantInfo;
 
 import lombok.*;
@@ -18,5 +19,7 @@ public class ChatMessageResponse {
     boolean me;
     String message;
     ParticipantInfo sender;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     Instant createdDate;
 }

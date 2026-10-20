@@ -1,5 +1,12 @@
 package com.devteria.chat.service;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
 import com.corundumstudio.socketio.SocketIOServer;
 import com.devteria.chat.dto.request.ChatMessageRequest;
 import com.devteria.chat.dto.response.ChatMessageResponse;
@@ -11,16 +18,11 @@ import com.devteria.chat.mapper.ChatMessageMapper;
 import com.devteria.chat.repository.ChatMessageRepository;
 import com.devteria.chat.repository.ConversationRepository;
 import com.devteria.chat.repository.httpclient.ProfileClient;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -38,7 +40,8 @@ public class ChatMessageService {
     public List<ChatMessageResponse> getMessages(String conversationId) {
         // Validate conversationId
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        conversationRepository.findById(conversationId)
+        conversationRepository
+                .findById(conversationId)
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND))
                 .getParticipants()
                 .stream()
@@ -54,7 +57,8 @@ public class ChatMessageService {
     public ChatMessageResponse create(ChatMessageRequest request) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         // Validate conversationId
-        conversationRepository.findById(request.getConversationId())
+        conversationRepository
+                .findById(request.getConversationId())
                 .orElseThrow(() -> new AppException(ErrorCode.CONVERSATION_NOT_FOUND))
                 .getParticipants()
                 .stream()
@@ -72,11 +76,11 @@ public class ChatMessageService {
         // Build Chat message Info
         ChatMessage chatMessage = chatMessageMapper.toChatMessage(request);
         chatMessage.setSender(ParticipantInfo.builder()
-                        .userId(userInfo.getUserId())
-                        .username(userInfo.getUsername())
-                        .firstName(userInfo.getFirstName())
-                        .lastName(userInfo.getLastName())
-                        .avatar(userInfo.getAvatar())
+                .userId(userInfo.getUserId())
+                .username(userInfo.getUsername())
+                .firstName(userInfo.getFirstName())
+                .lastName(userInfo.getLastName())
+                .avatar(userInfo.getAvatar())
                 .build());
         chatMessage.setCreatedDate(Instant.now());
 

@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenV - Backend Chat Service Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Socket.IO Client for Netty-SocketIO (port 8099) -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#EEF2FF',
+                            100: '#E0E7FF',
+                            200: '#C7D2FE',
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA',
+                            900: '#312E81',
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 4px -1px rgba(15, 23, 42, 0.03)',
+                        'card': '0 4px 16px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.04)',
+                        'modal': '0 20px 40px -12px rgba(15, 23, 42, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+        .typing-dot:nth-child(1) { animation: typingBounce 1.4s infinite ease-in-out 0s; }
+        .typing-dot:nth-child(2) { animation: typingBounce 1.4s infinite ease-in-out 0.2s; }
+        .typing-dot:nth-child(3) { animation: typingBounce 1.4s infinite ease-in-out 0.4s; }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        .pulse-online { animation: pulseGlow 2s infinite ease-in-out; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased h-screen flex flex-col overflow-hidden selection:bg-brand-500 selection:text-white">
+
+    <!-- TOP NAVIGATION & STATUS BAR -->
+    <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 flex items-center justify-between shrink-0 z-30 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white font-black shadow-md shadow-brand-500/25">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                </div>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-[15px] tracking-tight bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">GenV</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-300 border border-brand-200/60 dark:border-brand-700/50">
+                            Chat Service Studio
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backend Services Status Pill -->
+            <div class="hidden md:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800 text-[11.5px] font-mono">
+                <!-- Socket.IO Status -->
+                <div id="socket-status-badge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span id="socket-led" class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>Netty-SocketIO:8099</span>
+                    <span id="socket-status-text" class="font-bold text-amber-500">DISCONNECTED</span>
+                </div>
+                <!-- REST API Status -->
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>REST:8086/chat</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Controls: Auth, Debugger, Theme -->
+        <div class="flex items-center gap-2.5">
+            <!-- Active User Identity Pill -->
+            <div id="user-identity-card" onclick="openAuthModal()" class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-brand-500 transition-colors">
+                <img id="nav-user-avatar" src="https://api.dicebear.com/9.x/bottts/svg?seed=anonymous" alt="User" class="w-6 h-6 rounded-lg bg-brand-50 border border-brand-200 object-cover">
+                <div class="flex flex-col text-left">
+                    <span id="nav-username" class="text-[12px] font-bold text-slate-700 dark:text-slate-200 leading-tight">Chưa đăng nhập</span>
+                    <span id="nav-user-sub" class="text-[10px] font-mono text-slate-400 leading-none truncate max-w-[110px]">Click để cấu hình JWT</span>
+                </div>
+                <i data-lucide="key" class="w-3.5 h-3.5 text-slate-400 ml-1"></i>
+            </div>
+
+            <!-- Live Socket Debugger Toggle -->
+            <button onclick="toggleDebuggerPanel()" id="debugger-toggle-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200/80 dark:border-slate-700 transition-all">
+                <i data-lucide="terminal" class="w-3.5 h-3.5 text-brand-600 dark:text-brand-400"></i>
+                <span class="hidden sm:inline">Inspector</span>
+                <span id="event-counter-badge" class="px-1.5 py-0.2 rounded-full bg-brand-600 text-white text-[10px] font-mono font-bold">0</span>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button onclick="toggleTheme()" class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors">
+                <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CHAT SERVICE WORKSPACE: 3-PANEL LAYOUT -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- PANEL 1: CONVERSATIONS SIDEBAR (340px) -->
+        <aside class="w-80 md:w-88 border-r border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20">
+            <!-- Sidebar Header & Action -->
+            <div class="p-3.5 border-b border-slate-200/70 dark:border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <span>Cuộc trò chuyện</span>
+                        <span id="conv-count-badge" class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-500 font-semibold">0</span>
+                    </h2>
+                    <div class="flex items-center gap-1">
+                        <button onclick="fetchConversations()" title="Tải lại từ MongoDB" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+                            <i id="refresh-conv-icon" data-lucide="rotate-cw" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="openNewConversationModal()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition-all">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>Tạo mới</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative">
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    <input 
+                        type="text" 
+                        id="search-conv-input" 
+                        placeholder="Tìm kiếm hội thoại..." 
+                        oninput="filterConversationList()" 
+                        class="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+                    >
+                </div>
+
+                <!-- Filter Tabs -->
+                <div class="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-[11.5px] font-medium">
+                    <button id="filter-tab-all" onclick="setConversationFilter('all')" class="flex-1 py-1 rounded-md text-center bg-white dark:bg-slate-700 shadow-sm text-brand-600 dark:text-brand-300 font-bold transition-all">Tất cả</button>
+                    <button id="filter-tab-unread" onclick="setConversationFilter('unread')" class="flex-1 py-1 rounded-md text-center text-slate-500 dark:text-slate-400 hover:text-slate-800 transition-all">Chưa đọc</button>
+                    <button id="filter-tab-group" onclick="setConversationFilter('group')" class="flex-1 py-1 rounded-md text-center text-slate-500 dark:text-slate-400 hover:text-slate-800 transition-all">Nhóm</button>
+                </div>
+            </div>
+
+            <!-- Conversations Scrollable List -->
+            <div id="conversations-list-container" class="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-2 space-y-1">
+                <!-- Dynamically populated from MongoDB -->
+                <div class="py-16 text-center text-slate-400 text-xs">
+                    <div class="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    Đang tải cuộc trò chuyện từ MongoDB...
+                </div>
+            </div>
+
+            <!-- Quick Action / Switch Account Helper Footer -->
+            <div class="p-3 border-t border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/80 flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-mono text-[11px]">Chat Service v1.0</span>
+                <button onclick="openAuthModal()" class="text-brand-600 hover:underline font-semibold flex items-center gap-1">
+                    <i data-lucide="repeat" class="w-3 h-3"></i> Đổi tài khoản test
+                </button>
+            </div>
+        </aside>
+
+        <!-- PANEL 2: ACTIVE CONVERSATION CHAT WINDOW (FLEX-1) -->
+        <section id="chat-window-section" class="flex-1 flex flex-col bg-[#F8FAFC] dark:bg-slate-950 relative overflow-hidden">
+            
+            <!-- State 1: Active Chat View -->
+            <div id="active-chat-container" class="flex-1 flex flex-col h-full hidden">
+                <!-- Chat Header -->
+                <div class="h-14 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-soft">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="relative shrink-0">
+                            <img id="active-chat-avatar" src="https://api.dicebear.com/9.x/thumbs/svg?seed=room" alt="Room" class="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100">
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h3 id="active-chat-title" class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">Hội thoại</h3>
+                                <span id="active-chat-type-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">DIRECT</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                                <span id="active-chat-participants" class="truncate">2 thành viên</span>
+                                <span>•</span>
+                                <span id="active-chat-room-id" class="font-mono text-[10px] text-slate-400 truncate max-w-[140px]">ID: ...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Header Actions -->
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="fetchActiveMessages()" title="Tải lại tin nhắn từ MongoDB" class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <i id="refresh-messages-icon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="copyCurrentConversationId()" title="Copy Conversation ID" class="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages Stream Box -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
+                    <!-- Messages dynamically rendered here -->
+                </div>
+
+                <!-- Realtime Typing Indicator -->
+                <div id="typing-indicator-bar" class="px-6 py-1 text-xs text-slate-400 italic hidden flex items-center gap-2">
+                    <div class="flex items-center gap-1 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500 typing-dot"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500 typing-dot"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-500 typing-dot"></span>
+                        <span id="typing-user-label" class="ml-1 text-[11.5px] text-slate-500 font-sans">Ai đó đang soạn tin...</span>
+                    </div>
+                </div>
+
+                <!-- Quick Test Message Bar -->
+                <div class="px-4 py-1.5 bg-slate-100/70 dark:bg-slate-900/60 border-t border-slate-200/50 dark:border-slate-800/50 flex items-center gap-2 overflow-x-auto no-scrollbar text-[11.5px]">
+                    <span class="text-slate-400 font-mono shrink-0">Test nhanh:</span>
+                    <button onclick="sendQuickMessage('Xin chào! Backend SocketIO kết nối rất mượt 🎉')" class="px-2.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shrink-0 transition-colors">👋 Chào hỏi</button>
+                    <button onclick="sendQuickMessage('Kiểm tra độ trễ realtime SocketIO port 8099 ⚡')" class="px-2.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shrink-0 transition-colors">⚡ Ping độ trễ</button>
+                    <button onclick="sendQuickMessage('Tin nhắn này vừa được lưu vào MongoDB `chat_message` collection!')" class="px-2.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shrink-0 transition-colors">📦 Test MongoDB</button>
+                </div>
+
+                <!-- Message Input Bar -->
+                <form id="chat-input-form" onsubmit="handleSendMessageSubmit(event)" class="p-3 md:p-4 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2">
+                    <button type="button" onclick="insertEmoji('🚀')" class="p-2 text-slate-400 hover:text-amber-500 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        <i data-lucide="smile" class="w-5 h-5"></i>
+                    </button>
+                    <input 
+                        type="text" 
+                        id="chat-message-input" 
+                        placeholder="Nhập tin nhắn gửi tới Netty-SocketIO (port 8099)..." 
+                        oninput="handleTypingKeypress()" 
+                        autocomplete="off" 
+                        class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-[13.5px] text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+                    >
+                    <button 
+                        type="submit" 
+                        id="send-message-btn" 
+                        class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/25 active:scale-95 transition-all"
+                    >
+                        <span>Gửi</span>
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- State 2: Empty Selection Screen -->
+            <div id="empty-chat-state" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-4 shadow-sm border border-brand-200/60 dark:border-brand-800/60">
+                    <i data-lucide="message-square" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Chọn một cuộc trò chuyện để bắt đầu</h3>
+                <p class="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
+                    Kết nối realtime trực tiếp với Netty-SocketIO (port 8099) và Spring Boot REST API (port 8086).
+                </p>
+                <div class="flex items-center gap-3">
+                    <button onclick="openNewConversationModal()" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-md shadow-brand-500/25 flex items-center gap-1.5 transition-all">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Tạo cuộc trò chuyện mới</span>
+                    </button>
+                    <button onclick="openAuthModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-brand-500"></i>
+                        <span>Cấu hình Token / Đăng nhập</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- PANEL 3: REALTIME SOCKET & REST INSPECTOR (380px, COLLAPSIBLE) -->
+        <aside id="debugger-panel" class="w-96 border-l border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col shrink-0 z-20 transition-all duration-300">
+            <!-- Inspector Header -->
+            <div class="h-14 px-4 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-brand-600"></i>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Socket & REST Inspector</h2>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button onclick="clearDebuggerLogs()" title="Xoá logs" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button onclick="toggleDebuggerPanel()" title="Đóng panel" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Inspector Tab Switcher -->
+            <div class="flex border-b border-slate-200/60 dark:border-slate-800 text-xs font-semibold">
+                <button id="inspector-tab-events" onclick="switchInspectorTab('events')" class="flex-1 py-2 text-center text-brand-600 border-b-2 border-brand-600 dark:text-brand-400 transition-colors">Live Events</button>
+                <button id="inspector-tab-token" onclick="switchInspectorTab('token')" class="flex-1 py-2 text-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">JWT Claims</button>
+                <button id="inspector-tab-endpoints" onclick="switchInspectorTab('endpoints')" class="flex-1 py-2 text-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Endpoints</button>
+            </div>
+
+            <!-- Tab Content 1: Live Event Stream -->
+            <div id="inspector-content-events" class="flex-1 flex flex-col overflow-hidden">
+                <div class="p-2.5 bg-slate-900 text-slate-300 font-mono text-[11px] border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="socket-client-id-label">Socket ID: null</span>
+                    </div>
+                    <span id="socket-transport-label" class="text-slate-500">transport: --</span>
+                </div>
+                <div id="event-logs-list" class="flex-1 overflow-y-auto p-2 space-y-1.5 font-mono text-[11px] bg-slate-950 text-slate-300">
+                    <!-- Events appended here -->
+                    <div class="text-slate-500 italic p-3 text-center">Chưa có sự kiện Socket.IO nào được ghi nhận.</div>
+                </div>
+            </div>
+
+            <!-- Tab Content 2: JWT Claims Viewer -->
+            <div id="inspector-content-token" class="flex-1 overflow-y-auto p-4 space-y-3 hidden font-mono text-xs">
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">CURRENT USER ID (SUB)</span>
+                    <span id="jwt-sub-val" class="text-brand-600 dark:text-brand-400 font-bold break-all select-all">Chưa đăng nhập</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">USERNAME</span>
+                    <span id="jwt-name-val" class="text-slate-700 dark:text-slate-200 font-bold break-all">--</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">REALM ROLES</span>
+                    <span id="jwt-roles-val" class="text-slate-700 dark:text-slate-200">--</span>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                    <span class="text-[10px] font-bold text-slate-400 block mb-1">TOKEN EXPIRATION</span>
+                    <span id="jwt-exp-val" class="text-slate-700 dark:text-slate-200">--</span>
+                </div>
+                <div class="pt-2">
+                    <button onclick="openAuthModal()" class="w-full py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition-colors">
+                        Đổi Token / Đăng nhập lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content 3: Endpoints & Documentation -->
+            <div id="inspector-content-endpoints" class="flex-1 overflow-y-auto p-4 space-y-2.5 hidden text-xs">
+                <div class="font-bold text-slate-700 dark:text-slate-200 mb-1">REST API Contract:</div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-emerald-500 font-bold">GET</span> /chat/conversations/my-conversations
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-indigo-500 font-bold">POST</span> /chat/conversations/create
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-emerald-500 font-bold">GET</span> /chat/messages?conversationId=...
+                </div>
+
+                <div class="font-bold text-slate-700 dark:text-slate-200 mt-3 mb-1">Netty-SocketIO Events:</div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-amber-500 font-bold">EMIT</span> send_message <br>
+                    <span class="text-slate-400 text-[10px]">{ conversationId, message }</span>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-emerald-500 font-bold">LISTEN</span> receive_message
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-indigo-500 font-bold">EMIT</span> join_conversation / leave_conversation
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[11px]">
+                    <span class="text-purple-500 font-bold">EMIT</span> typing -> <span class="text-emerald-500 font-bold">LISTEN</span> user_typing
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- MODAL 1: AUTHENTICATION / KEYCLOAK LOGIN & JWT CONFIG -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-modal border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Xác thực Chat Service Backend</h3>
+                        <p class="text-[11px] text-slate-400">Kết nối với Keycloak IAM & Netty-SocketIO</p>
+                    </div>
+                </div>
+                <button onclick="closeAuthModal()" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                <!-- Option A: Direct Keycloak Login -->
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                            <i data-lucide="log-in" class="w-3.5 h-3.5 text-brand-600"></i>
+                            Đăng nhập nhanh Keycloak (Realm 'markie')
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400">port 8280</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="keycloak-username-input" placeholder="Username (vd: stewie6)" class="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <input type="password" id="keycloak-password-input" placeholder="Password" class="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <button type="button" id="keycloak-login-action-btn" onclick="handleKeycloakLogin()" class="w-full py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors">
+                        <i data-lucide="arrow-right-circle" class="w-3.5 h-3.5"></i>
+                        <span>Lấy Token từ Keycloak</span>
+                    </button>
+                </div>
+
+                <!-- Option B: Direct JWT Bearer Token Paste -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Hoặc dán trực tiếp Bearer JWT Token:
+                    </label>
+                    <textarea 
+                        id="raw-jwt-input" 
+                        rows="4" 
+                        placeholder="ey..." 
+                        oninput="previewTokenInModal(this.value)"
+                        class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 break-all"
+                    ></textarea>
+                </div>
+
+                <!-- Token Preview Box -->
+                <div id="modal-token-preview" class="p-3 rounded-xl bg-brand-50/60 dark:bg-brand-950/40 border border-brand-200/60 dark:border-brand-800/60 text-xs hidden">
+                    <div class="font-bold text-brand-700 dark:text-brand-300 mb-1 flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Token hợp lệ!
+                    </div>
+                    <div class="font-mono text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                        <div>User ID: <span id="preview-sub" class="font-bold"></span></div>
+                        <div>Username: <span id="preview-username" class="font-bold"></span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                <button type="button" onclick="handleClearToken()" class="text-xs text-rose-500 hover:underline font-semibold">
+                    Xoá Token
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeAuthModal()" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        Đóng
+                    </button>
+                    <button type="button" onclick="applyAndConnectBackend()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="plug" class="w-3.5 h-3.5"></i>
+                        <span>Lưu & Kết nối Backend</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: TẠO CUỘC TRÒ CHUYỆN MỚI (CREATE CONVERSATION) -->
+    <div id="new-conv-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-modal border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Tạo cuộc trò chuyện mới</h3>
+                        <p class="text-[11px] text-slate-400">Gọi REST: POST /chat/conversations/create</p>
+                    </div>
+                </div>
+                <button onclick="closeNewConversationModal()" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleCreateConversationSubmit(event)" class="p-5 space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-200 mb-1">
+                        Loại hội thoại:
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <input type="radio" name="conv-type" value="DIRECT" checked onchange="toggleConvTypeFields(this.value)" class="text-brand-600">
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">1-1 (Trực tiếp)</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <input type="radio" name="conv-type" value="GROUP" onchange="toggleConvTypeFields(this.value)" class="text-brand-600">
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">Nhóm (Group)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-200 mb-1">
+                        ID người nhận (Participant User ID / UUID): <span class="text-rose-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="new-conv-participant-id" 
+                        placeholder="Nhập User ID (Keycloak UUID hoặc username)..." 
+                        required 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                    <p class="text-[10.5px] text-slate-400 mt-1">Đối với nhóm, phân cách nhiều User ID bằng dấu phẩy (,)</p>
+                </div>
+
+                <div id="group-name-container" class="space-y-1">
+                    <label class="block font-bold text-slate-700 dark:text-slate-200">
+                        Tên cuộc trò chuyện (tuỳ chọn):
+                    </label>
+                    <input 
+                        type="text" 
+                        id="new-conv-name-input" 
+                        placeholder="Ví dụ: Team Dev GenV" 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block font-bold text-slate-700 dark:text-slate-200">
+                        Tin nhắn mở đầu (tuỳ chọn):
+                    </label>
+                    <input 
+                        type="text" 
+                        id="new-conv-first-msg-input" 
+                        placeholder="Xin chào bạn..." 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                </div>
+
+                <div class="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 pt-4">
+                    <button type="button" onclick="closeNewConversationModal()" class="px-3.5 py-2 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        Huỷ
+                    </button>
+                    <button type="submit" id="create-conv-submit-btn" class="px-4 py-2 rounded-xl font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        <span>Tạo cuộc trò chuyện</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- CLIENT SCRIPT: FULL REALTIME & REST INTEGRATION -->
+    <script>
+        // CONFIGURATION
+        const CONFIG = {
+            REST_BASE: '/chat', // Spring Boot context-path
+            SOCKET_URL: 'http://localhost:8099', // Netty-SocketIO server
+            KEYCLOAK_URL: 'http://localhost:8280',
+            KEYCLOAK_REALM: 'markie',
+            KEYCLOAK_CLIENT: 'markie_webapp',
+            STORAGE_TOKEN_KEY: 'genv_jwt_token'
+        };
+
+        // APPLICATION STATE
+        let socket = null;
+        let jwtToken = localStorage.getItem(CONFIG.STORAGE_TOKEN_KEY) || '';
+        let currentUser = null; // { userId, username, email, roles, exp }
+        let conversations = [];
+        let activeConversation = null;
+        let currentMessages = [];
+        let currentFilter = 'all';
+        let isTypingSent = false;
+        let typingTimeout = null;
+        let eventCounter = 0;
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', async () => {
+            refreshIcons();
+            
+            // Check stored token
+            if (jwtToken) {
+                const parsed = parseJwt(jwtToken);
+                if (parsed && !isTokenExpired(parsed)) {
+                    setCurrentUserFromJwt(parsed);
+                    initSocketConnection();
+                    await fetchConversations();
+                } else {
+                    logWarn('JWT Token đã hết hạn hoặc không hợp lệ.');
+                    localStorage.removeItem(CONFIG.STORAGE_TOKEN_KEY);
+                    jwtToken = '';
+                    openAuthModal();
+                }
+            } else {
+                openAuthModal();
+            }
+        });
+
+        function refreshIcons() {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        // 1. AUTHENTICATION & JWT UTILS
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function isTokenExpired(jwt) {
+            if (!jwt || !jwt.exp) return true;
+            return Date.now() >= jwt.exp * 1000;
+        }
+
+        function setCurrentUserFromJwt(jwt) {
+            const roles = (jwt.realm_access && jwt.realm_access.roles) ? jwt.realm_access.roles.join(', ') : 'USER';
+            currentUser = {
+                userId: jwt.sub,
+                username: jwt.preferred_username || jwt.name || jwt.sub.substring(0, 8),
+                email: jwt.email || '',
+                roles: roles,
+                exp: jwt.exp ? new Date(jwt.exp * 1000).toLocaleString() : '--'
+            };
+
+            // Update Header Card
+            document.getElementById('nav-username').textContent = `@${currentUser.username}`;
+            document.getElementById('nav-user-sub').textContent = `ID: ${currentUser.userId.substring(0, 10)}...`;
+            document.getElementById('nav-user-avatar').src = `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(currentUser.userId)}`;
+
+            // Update Inspector Claims
+            document.getElementById('jwt-sub-val').textContent = currentUser.userId;
+            document.getElementById('jwt-name-val').textContent = currentUser.username;
+            document.getElementById('jwt-roles-val').textContent = currentUser.roles;
+            document.getElementById('jwt-exp-val').textContent = currentUser.exp;
+
+            logSuccess(`Xác thực thành công cho user: @${currentUser.username} (${currentUser.userId})`);
+        }
+
+        async function handleKeycloakLogin() {
+            const u = document.getElementById('keycloak-username-input').value.trim();
+            const p = document.getElementById('keycloak-password-input').value.trim();
+            if (!u || !p) {
+                showToast('Vui lòng nhập Username và Mật khẩu Keycloak!', 'WARN');
+                return;
+            }
+
+            const btn = document.getElementById('keycloak-login-action-btn');
+            btn.innerHTML = `<span class="animate-spin mr-1">⌛</span> Đang đăng nhập...`;
+            btn.disabled = true;
+
+            try {
+                const params = new URLSearchParams();
+                params.append('client_id', CONFIG.KEYCLOAK_CLIENT);
+                params.append('grant_type', 'password');
+                params.append('username', u);
+                params.append('password', p);
+
+                const res = await fetch(`${CONFIG.KEYCLOAK_URL}/realms/${CONFIG.KEYCLOAK_REALM}/protocol/openid-connect/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
+                });
+
+                const data = await res.json();
+                if (data.access_token) {
+                    document.getElementById('raw-jwt-input').value = data.access_token;
+                    previewTokenInModal(data.access_token);
+                    showToast(`Lấy token thành công cho @${u}! Bấm "Lưu & Kết nối".`, 'SUCCESS');
+                    logSuccess(`Lấy JWT token thành công từ Keycloak cho tài khoản ${u}`);
+                } else {
+                    showToast('Đăng nhập Keycloak thất bại: ' + (data.error_description || data.error), 'ERROR');
+                    logError(`Keycloak Login Error: ${JSON.stringify(data)}`);
+                }
+            } catch (err) {
+                showToast('Không kết nối được tới Keycloak tại port 8280!', 'ERROR');
+                logError(`Keycloak connection error: ${err.message}`);
+            } finally {
+                btn.innerHTML = `<i data-lucide="arrow-right-circle" class="w-3.5 h-3.5"></i><span>Lấy Token từ Keycloak</span>`;
+                btn.disabled = false;
+                refreshIcons();
+            }
+        }
+
+        function previewTokenInModal(val) {
+            const previewBox = document.getElementById('modal-token-preview');
+            const trimmed = val.trim();
+            if (!trimmed) {
+                previewBox.classList.add('hidden');
+                return;
+            }
+
+            const jwt = parseJwt(trimmed);
+            if (jwt && jwt.sub) {
+                document.getElementById('preview-sub').textContent = jwt.sub;
+                document.getElementById('preview-username').textContent = jwt.preferred_username || jwt.name || 'User';
+                previewBox.classList.remove('hidden');
+            } else {
+                previewBox.classList.add('hidden');
+            }
+        }
+
+        function applyAndConnectBackend() {
+            const raw = document.getElementById('raw-jwt-input').value.trim();
+            if (!raw) {
+                showToast('Vui lòng dán hoặc lấy JWT Token trước!', 'WARN');
+                return;
+            }
+
+            const jwt = parseJwt(raw);
+            if (!jwt || !jwt.sub) {
+                showToast('Mã JWT không đúng định dạng!', 'ERROR');
+                return;
+            }
+
+            jwtToken = raw;
+            localStorage.setItem(CONFIG.STORAGE_TOKEN_KEY, jwtToken);
+            setCurrentUserFromJwt(jwt);
+            closeAuthModal();
+            showToast('Đã lưu token! Bắt đầu kết nối Netty-SocketIO...', 'SUCCESS');
+
+            initSocketConnection();
+            fetchConversations();
+        }
+
+        function handleClearToken() {
+            localStorage.removeItem(CONFIG.STORAGE_TOKEN_KEY);
+            jwtToken = '';
+            currentUser = null;
+            document.getElementById('raw-jwt-input').value = '';
+            document.getElementById('modal-token-preview').classList.add('hidden');
+            document.getElementById('nav-username').textContent = 'Chưa đăng nhập';
+            document.getElementById('nav-user-sub').textContent = 'Click để cấu hình JWT';
+            if (socket) socket.disconnect();
+            conversations = [];
+            activeConversation = null;
+            renderConversationList();
+            showEmptyChatScreen();
+            showToast('Đã xoá JWT Token khỏi LocalStorage', 'INFO');
+        }
+
+        function openAuthModal() {
+            if (jwtToken) {
+                document.getElementById('raw-jwt-input').value = jwtToken;
+                previewTokenInModal(jwtToken);
+            }
+            document.getElementById('auth-modal').classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        // 2. NETTY-SOCKETIO CONNECTION (PORT 8099)
+        function initSocketConnection() {
+            if (!jwtToken) return;
+
+            if (socket) {
+                socket.disconnect();
+            }
+
+            updateSocketLed(false, 'CONNECTING');
+            logInfo(`Đang kết nối tới Netty-SocketIO tại ${CONFIG.SOCKET_URL} với Bearer token...`);
+
+            try {
+                socket = io(CONFIG.SOCKET_URL, {
+                    query: { token: jwtToken },
+                    transports: ['websocket', 'polling'],
+                    reconnectionAttempts: 10,
+                    timeout: 8000
+                });
+
+                socket.on('connect', () => {
+                    updateSocketLed(true, 'CONNECTED');
+                    document.getElementById('socket-client-id-label').textContent = `Socket ID: ${socket.id}`;
+                    document.getElementById('socket-transport-label').textContent = `transport: ${socket.io.engine.transport.name}`;
+                    logSuccess(`Socket.IO kết nối thành công! Session ID: ${socket.id}`);
+                    showToast('Netty-SocketIO: Đã kết nối realtime (port 8099)!', 'SUCCESS');
+
+                    // If active conversation, rejoin room
+                    if (activeConversation) {
+                        socket.emit('join_conversation', activeConversation.id);
+                        logEvent('EMIT', 'join_conversation', activeConversation.id);
+                    }
+                });
+
+                socket.on('disconnect', (reason) => {
+                    updateSocketLed(false, 'DISCONNECTED');
+                    document.getElementById('socket-client-id-label').textContent = 'Socket ID: null';
+                    logWarn(`Socket.IO bị ngắt kết nối: ${reason}`);
+                });
+
+                socket.on('connect_error', (err) => {
+                    updateSocketLed(false, 'ERROR');
+                    logError(`Lỗi kết nối Socket.IO: ${err.message}`);
+                });
+
+                // EVENT: receive_message
+                socket.on('receive_message', (msg) => {
+                    logEvent('RECV', 'receive_message', msg);
+                    onIncomingMessage(msg);
+                });
+
+                // EVENT: new_message_notification
+                socket.on('new_message_notification', (msg) => {
+                    logEvent('RECV', 'new_message_notification', msg);
+                    onIncomingNotification(msg);
+                });
+
+                // EVENT: user_typing
+                socket.on('user_typing', (data) => {
+                    logEvent('RECV', 'user_typing', data);
+                    onIncomingTyping(data);
+                });
+
+                // EVENT: error
+                socket.on('error', (err) => {
+                    logEvent('RECV_ERR', 'error', err);
+                    logError(`Socket server error: ${JSON.stringify(err)}`);
+                });
+
+            } catch (e) {
+                logError(`Không thể khởi tạo Socket.IO: ${e.message}`);
+            }
+        }
+
+        function updateSocketLed(connected, statusText) {
+            const led = document.getElementById('socket-led');
+            const text = document.getElementById('socket-status-text');
+            if (connected) {
+                led.className = 'w-2 h-2 rounded-full bg-emerald-500 pulse-online';
+                text.className = 'font-bold text-emerald-500';
+            } else {
+                led.className = 'w-2 h-2 rounded-full bg-rose-500';
+                text.className = 'font-bold text-rose-500';
+            }
+            text.textContent = statusText;
+        }
+
+        // 3. REST API CALLS (PORT 8086)
+        async function fetchConversations() {
+            if (!jwtToken) {
+                renderEmptyConversations('Chưa có token. Hãy bấm vào "Cấu hình JWT" để kết nối.');
+                return;
+            }
+
+            const refreshIcon = document.getElementById('refresh-conv-icon');
+            refreshIcon.classList.add('animate-spin');
+
+            try {
+                logInfo(`Gọi REST: GET ${CONFIG.REST_BASE}/conversations/my-conversations`);
+                const res = await fetch(`${CONFIG.REST_BASE}/conversations/my-conversations`, {
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    showToast('Phiên làm việc hết hạn hoặc token không hợp lệ (401)!', 'ERROR');
+                    logError('REST 401/403 Unauthorized khi gọi my-conversations.');
+                    renderEmptyConversations('Lỗi xác thực (401). Vui lòng cập nhật JWT Token mới.');
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.code === 1000 && Array.isArray(data.result)) {
+                    conversations = data.result;
+                    document.getElementById('conv-count-badge').textContent = conversations.length;
+                    logSuccess(`Tải thành công ${conversations.length} cuộc trò chuyện từ MongoDB!`);
+                    renderConversationList();
+
+                    // If active conversation already selected, refresh it; otherwise select first
+                    if (activeConversation) {
+                        const updated = conversations.find(c => c.id === activeConversation.id);
+                        if (updated) activeConversation = updated;
+                    } else if (conversations.length > 0) {
+                        selectConversation(conversations[0].id, false);
+                    } else {
+                        showEmptyChatScreen();
+                    }
+                } else {
+                    logWarn(`API trả về: ${data.message || 'Không có dữ liệu'}`);
+                    renderEmptyConversations(data.message || 'Chưa có cuộc trò chuyện nào.');
+                }
+            } catch (err) {
+                logError(`Fetch conversations error: ${err.message}`);
+                renderEmptyConversations('Không kết nối được tới REST API /chat. Kiểm tra backend port 8086!');
+            } finally {
+                refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        async function fetchActiveMessages() {
+            if (!activeConversation || !jwtToken) return;
+
+            const refreshIcon = document.getElementById('refresh-messages-icon');
+            refreshIcon.classList.add('animate-spin');
+            const container = document.getElementById('messages-container');
+
+            try {
+                logInfo(`Gọi REST: GET ${CONFIG.REST_BASE}/messages?conversationId=${activeConversation.id}`);
+                const res = await fetch(`${CONFIG.REST_BASE}/messages?conversationId=${encodeURIComponent(activeConversation.id)}`, {
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+
+                if (!res.ok) {
+                    logError(`Lỗi tải tin nhắn: HTTP ${res.status}`);
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.code === 1000 && Array.isArray(data.result)) {
+                    currentMessages = data.result;
+                    logSuccess(`Tải được ${currentMessages.length} tin nhắn của cuộc trò chuyện ${activeConversation.id}`);
+                    renderMessagesStream();
+                }
+            } catch (e) {
+                logError(`Lỗi tải lịch sử tin nhắn: ${e.message}`);
+            } finally {
+                refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        // 4. REALTIME SOCKET EVENT EMITTERS & HANDLERS
+        async function handleSendMessageSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('chat-message-input');
+            const message = input.value.trim();
+            if (!message || !activeConversation) return;
+
+            input.value = '';
+            input.focus();
+
+            // Clear typing state
+            if (isTypingSent && socket && socket.connected) {
+                socket.emit('typing', { conversationId: activeConversation.id, isTyping: false });
+                isTypingSent = false;
+            }
+
+            const payload = {
+                conversationId: activeConversation.id,
+                message: message
+            };
+
+            // Option 1: Send via Netty-SocketIO (port 8099)
+            if (socket && socket.connected) {
+                socket.emit('send_message', payload);
+                logEvent('EMIT', 'send_message', payload);
+                logInfo(`[SOCKET send_message]: Đã phát tin nhắn tới room ${activeConversation.id}`);
+            } else {
+                // Option 2: Fallback to REST API POST /chat/messages/create
+                logWarn('Socket chưa kết nối, gửi fallback qua REST API POST /chat/messages/create');
+                try {
+                    const res = await fetch(`${CONFIG.REST_BASE}/messages/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${jwtToken}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const resData = await res.json();
+                    if (resData.code === 1000 && resData.result) {
+                        onIncomingMessage(resData.result);
+                    }
+                } catch (e) {
+                    logError(`Gửi tin nhắn qua REST thất bại: ${e.message}`);
+                    showToast('Lỗi gửi tin nhắn! Vui lòng thử lại.', 'ERROR');
+                }
+            }
+        }
+
+        function sendQuickMessage(text) {
+            const input = document.getElementById('chat-message-input');
+            input.value = text;
+            const form = document.getElementById('chat-input-form');
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+
+        function handleTypingKeypress() {
+            if (!activeConversation || !socket || !socket.connected) return;
+
+            if (!isTypingSent) {
+                isTypingSent = true;
+                socket.emit('typing', { conversationId: activeConversation.id, isTyping: true });
+                logEvent('EMIT', 'typing', { conversationId: activeConversation.id, isTyping: true });
+            }
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                if (isTypingSent) {
+                    isTypingSent = false;
+                    socket.emit('typing', { conversationId: activeConversation.id, isTyping: false });
+                    logEvent('EMIT', 'typing', { conversationId: activeConversation.id, isTyping: false });
+                }
+            }, 2500);
+        }
+
+        function onIncomingMessage(msg) {
+            // Update lastMessage in conversations list
+            const conv = conversations.find(c => c.id === msg.conversationId);
+            if (conv) {
+                conv.lastMessage = msg.message;
+                conv.lastMessageTime = msg.createdDate;
+            }
+
+            // If active conversation matches
+            if (activeConversation && activeConversation.id === msg.conversationId) {
+                if (currentUser && msg.sender && msg.sender.userId === currentUser.userId) {
+                    msg.me = true;
+                }
+                currentMessages.push(msg);
+                appendSingleMessageUI(msg);
+            } else {
+                if (conv) conv.unread = (conv.unread || 0) + 1;
+                showToast(`Tin nhắn mới từ ${msg.sender?.username || 'ai đó'}: "${msg.message.substring(0, 30)}..."`, 'INFO');
+            }
+
+            playChime();
+            renderConversationList();
+        }
+
+        function onIncomingNotification(msg) {
+            showToast(`Thông báo tin mới: ${msg.message?.substring(0, 35)}...`, 'INFO');
+            playChime();
+            fetchConversations();
+        }
+
+        function onIncomingTyping(data) {
+            if (!activeConversation || data.conversationId !== activeConversation.id) return;
+            if (currentUser && data.userId === currentUser.userId) return;
+
+            const indicator = document.getElementById('typing-indicator-bar');
+            const label = document.getElementById('typing-user-label');
+
+            if (data.isTyping) {
+                const name = data.userId ? `User (${data.userId.substring(0, 6)}...)` : 'Đối phương';
+                label.textContent = `${name} đang soạn tin...`;
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+
+        // 5. CREATE CONVERSATION MODAL & HANDLERS
+        function openNewConversationModal() {
+            document.getElementById('new-conv-modal').classList.remove('hidden');
+            document.getElementById('new-conv-participant-id').focus();
+            refreshIcons();
+        }
+
+        function closeNewConversationModal() {
+            document.getElementById('new-conv-modal').classList.add('hidden');
+        }
+
+        function toggleConvTypeFields(type) {
+            const groupNameInput = document.getElementById('new-conv-name-input');
+            if (type === 'GROUP') {
+                groupNameInput.placeholder = 'Nhập tên nhóm (ví dụ: Dev Team)...';
+            } else {
+                groupNameInput.placeholder = 'Tuỳ chọn (hoặc để trống)...';
+            }
+        }
+
+        async function handleCreateConversationSubmit(e) {
+            e.preventDefault();
+            if (!jwtToken) {
+                showToast('Chưa có JWT token. Vui lòng đăng nhập trước!', 'ERROR');
+                openAuthModal();
+                return;
+            }
+
+            const type = document.querySelector('input[name="conv-type"]:checked').value;
+            const rawIds = document.getElementById('new-conv-participant-id').value.trim();
+            const convName = document.getElementById('new-conv-name-input').value.trim();
+            const firstMsg = document.getElementById('new-conv-first-msg-input').value.trim();
+
+            const participantIds = rawIds.split(',')
+                .map(id => id.trim())
+                .filter(id => id.length > 0);
+
+            if (participantIds.length === 0) {
+                showToast('Vui lòng nhập ít nhất 1 Participant ID!', 'WARN');
+                return;
+            }
+
+            const payload = {
+                type: type,
+                participantIds: participantIds,
+                conversationName: convName || undefined
+            };
+
+            const submitBtn = document.getElementById('create-conv-submit-btn');
+            submitBtn.innerHTML = `<span class="animate-spin mr-1">⌛</span> Đang tạo...`;
+            submitBtn.disabled = true;
+
+            try {
+                logInfo(`Gọi REST: POST ${CONFIG.REST_BASE}/conversations/create`);
+                const res = await fetch(`${CONFIG.REST_BASE}/conversations/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.code === 1000 && data.result) {
+                    showToast('Đã tạo cuộc trò chuyện thành công!', 'SUCCESS');
+                    logSuccess(`Tạo conversation thành công: ID ${data.result.id}`);
+                    closeNewConversationModal();
+
+                    // Reload conversations & select newly created room
+                    await fetchConversations();
+                    selectConversation(data.result.id);
+
+                    // Send first message if provided
+                    if (firstMsg) {
+                        setTimeout(() => {
+                            sendQuickMessage(firstMsg);
+                        }, 400);
+                    }
+                } else {
+                    showToast('Lỗi tạo hội thoại: ' + (data.message || 'Không thể tạo'), 'ERROR');
+                    logError(`Create conversation error: ${data.message}`);
+                }
+            } catch (err) {
+                showToast('Lỗi kết nối khi tạo hội thoại!', 'ERROR');
+                logError(`Create conversation connection error: ${err.message}`);
+            } finally {
+                submitBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>Tạo cuộc trò chuyện</span>`;
+                submitBtn.disabled = false;
+                refreshIcons();
+            }
+        }
+
+        // 6. UI RENDERING FUNCTIONS
+        function selectConversation(convId, focusInput = true) {
+            const conv = conversations.find(c => c.id === convId);
+            if (!conv) return;
+
+            // Leave previous room if any
+            if (activeConversation && activeConversation.id !== convId && socket && socket.connected) {
+                socket.emit('leave_conversation', activeConversation.id);
+                logEvent('EMIT', 'leave_conversation', activeConversation.id);
+            }
+
+            activeConversation = conv;
+            conv.unread = 0;
+
+            // Join new room on Netty-SocketIO
+            if (socket && socket.connected) {
+                socket.emit('join_conversation', conv.id);
+                logEvent('EMIT', 'join_conversation', conv.id);
+                logInfo(`[EMIT join_conversation]: Đã join phòng ${conv.id}`);
+            }
+
+            // Update Header
+            const name = conv.conversationName || 'Hội thoại';
+            const avatar = conv.conversationAvatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(conv.id)}&size=80`;
+            const type = conv.type || 'DIRECT';
+            const participantCount = conv.participants ? `${conv.participants.length} thành viên` : '2 thành viên';
+
+            document.getElementById('active-chat-title').textContent = name;
+            document.getElementById('active-chat-avatar').src = avatar;
+            document.getElementById('active-chat-type-badge').textContent = type;
+            document.getElementById('active-chat-participants').textContent = participantCount;
+            document.getElementById('active-chat-room-id').textContent = `Room ID: ${conv.id}`;
+
+            // Switch view
+            document.getElementById('empty-chat-state').classList.add('hidden');
+            document.getElementById('active-chat-container').classList.remove('hidden');
+
+            renderConversationList();
+            fetchActiveMessages();
+
+            if (focusInput) {
+                setTimeout(() => {
+                    document.getElementById('chat-message-input')?.focus();
+                }, 100);
+            }
+        }
+
+        function showEmptyChatScreen() {
+            activeConversation = null;
+            document.getElementById('active-chat-container').classList.add('hidden');
+            document.getElementById('empty-chat-state').classList.remove('hidden');
+        }
+
+        function renderConversationList() {
+            const container = document.getElementById('conversations-list-container');
+            const searchQuery = document.getElementById('search-conv-input').value.trim().toLowerCase();
+
+            let filtered = [...conversations];
+
+            if (searchQuery) {
+                filtered = filtered.filter(c => (c.conversationName || '').toLowerCase().includes(searchQuery));
+            }
+
+            if (currentFilter === 'unread') {
+                filtered = filtered.filter(c => (c.unread || 0) > 0);
+            } else if (currentFilter === 'group') {
+                filtered = filtered.filter(c => c.type === 'GROUP');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="py-16 text-center text-slate-400 text-xs">
+                        <i data-lucide="inbox" class="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2"></i>
+                        <p>Không có hội thoại nào phù hợp.</p>
+                        <button onclick="openNewConversationModal()" class="mt-2 text-brand-600 dark:text-brand-400 hover:underline font-semibold">+ Bắt đầu cuộc trò chuyện mới</button>
+                    </div>
+                `;
+                refreshIcons();
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const isSelected = activeConversation && activeConversation.id === c.id;
+                const name = c.conversationName || 'Hội thoại';
+                const avatar = c.conversationAvatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(c.id)}&size=80`;
+                const lastMsg = c.lastMessage || 'Chưa có tin nhắn';
+                const time = c.lastMessageTime ? formatTime(c.lastMessageTime) : '';
+
+                return `
+                    <div 
+                        onclick="selectConversation('${c.id}')"
+                        class="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all ${
+                            isSelected 
+                                ? 'bg-brand-50/90 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800' 
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent'
+                        }"
+                    >
+                        <div class="relative shrink-0">
+                            <img src="${avatar}" alt="" class="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 bg-slate-100">
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-1">
+                                <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${escapeHtml(name)}</h4>
+                                <span class="font-mono text-[10.5px] text-slate-400 shrink-0">${time}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 mt-0.5">
+                                <p class="text-[11.5px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(lastMsg)}</p>
+                                ${(c.unread || 0) > 0 ? `
+                                    <span class="min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                        ${c.unread}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            refreshIcons();
+        }
+
+        function renderEmptyConversations(message) {
+            document.getElementById('conversations-list-container').innerHTML = `
+                <div class="py-16 px-4 text-center">
+                    <p class="text-xs text-slate-400 mb-3">${escapeHtml(message)}</p>
+                    <button onclick="openAuthModal()" class="px-3.5 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-sm">
+                        Cấu hình Token / Đăng nhập
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderMessagesStream() {
+            const container = document.getElementById('messages-container');
+            if (currentMessages.length === 0) {
+                container.innerHTML = `
+                    <div class="py-20 text-center text-slate-400 text-xs">
+                        <i data-lucide="message-circle" class="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600"></i>
+                        <p class="font-semibold text-slate-500">Chưa có tin nhắn nào trong phòng này.</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Hãy gửi tin nhắn đầu tiên bằng form bên dưới!</p>
+                    </div>
+                `;
+                refreshIcons();
+                return;
+            }
+
+            container.innerHTML = currentMessages.map(msg => createMessageHtml(msg)).join('');
+            container.scrollTop = container.scrollHeight;
+            refreshIcons();
+        }
+
+        function appendSingleMessageUI(msg) {
+            const container = document.getElementById('messages-container');
+            // If empty placeholder exists, clear it
+            if (currentMessages.length === 1) {
+                container.innerHTML = '';
+            }
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = createMessageHtml(msg);
+            container.appendChild(wrapper.firstElementChild);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function createMessageHtml(msg) {
+            const isMe = msg.me || (currentUser && msg.sender && msg.sender.userId === currentUser.userId);
+            const time = msg.createdDate ? formatTime(msg.createdDate) : '';
+            const senderName = msg.sender?.username || msg.sender?.userId?.substring(0, 8) || 'User';
+            const avatar = msg.sender?.avatar || `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(msg.sender?.userId || 'anon')}`;
+
+            if (isMe) {
+                return `
+                    <div class="flex flex-col items-end mb-2">
+                        <div class="max-w-[75%] px-4 py-2.5 rounded-2xl rounded-br-none bg-brand-600 text-white text-[13px] leading-relaxed shadow-sm break-words">
+                            ${escapeHtml(msg.message)}
+                        </div>
+                        <span class="font-mono text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                            ${time} • Đã lưu MongoDB <i data-lucide="check-check" class="w-3 h-3 text-emerald-500"></i>
+                        </span>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="flex items-end gap-2.5 mb-2">
+                        <img src="${avatar}" alt="" class="w-7 h-7 rounded-full object-cover shrink-0 mb-3 border border-slate-200 dark:border-slate-700 bg-slate-100">
+                        <div class="flex flex-col items-start max-w-[75%]">
+                            <span class="text-[10.5px] text-slate-400 font-medium ml-1">${escapeHtml(senderName)}</span>
+                            <div class="px-4 py-2.5 rounded-2xl rounded-bl-none bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-[13px] leading-relaxed shadow-sm break-words">
+                                ${escapeHtml(msg.message)}
+                            </div>
+                            <span class="font-mono text-[10px] text-slate-400 mt-1 ml-1">${time}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function setConversationFilter(filter) {
+            currentFilter = filter;
+            ['all', 'unread', 'group'].forEach(f => {
+                const btn = document.getElementById(`filter-tab-${f}`);
+                if (btn) {
+                    if (f === filter) {
+                        btn.className = 'flex-1 py-1 rounded-md text-center bg-white dark:bg-slate-700 shadow-sm text-brand-600 dark:text-brand-300 font-bold transition-all';
+                    } else {
+                        btn.className = 'flex-1 py-1 rounded-md text-center text-slate-500 dark:text-slate-400 hover:text-slate-800 transition-all';
+                    }
+                }
+            });
+            renderConversationList();
+        }
+
+        function filterConversationList() {
+            renderConversationList();
+        }
+
+        function copyCurrentConversationId() {
+            if (activeConversation) {
+                navigator.clipboard.writeText(activeConversation.id);
+                showToast(`Đã copy ID: ${activeConversation.id}`, 'INFO');
+            }
+        }
+
+        // 7. INSPECTOR & LOGGING SYSTEM
+        function logEvent(type, eventName, payload) {
+            eventCounter++;
+            document.getElementById('event-counter-badge').textContent = eventCounter;
+
+            const list = document.getElementById('event-logs-list');
+            if (eventCounter === 1) list.innerHTML = '';
+
+            const row = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            let badgeColor = 'bg-indigo-900/60 text-indigo-300 border-indigo-700';
+            if (type === 'EMIT') badgeColor = 'bg-amber-900/60 text-amber-300 border-amber-700';
+            if (type === 'RECV') badgeColor = 'bg-emerald-900/60 text-emerald-300 border-emerald-700';
+            if (type.includes('ERR')) badgeColor = 'bg-rose-900/60 text-rose-300 border-rose-700';
+
+            row.className = 'p-2 rounded-lg bg-slate-900/90 border border-slate-800/80 hover:border-slate-700 transition-colors';
+            row.innerHTML = `
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-1.5">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold border ${badgeColor}">${type}</span>
+                        <span class="font-bold text-slate-200">${escapeHtml(eventName)}</span>
+                    </div>
+                    <span class="text-slate-500 text-[10px]">${time}</span>
+                </div>
+                <pre class="text-[10px] text-slate-400 bg-slate-950/80 p-1.5 rounded overflow-x-auto">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+            `;
+            list.prepend(row);
+        }
+
+        function logInfo(text) { console.log(`[INFO] ${text}`); }
+        function logSuccess(text) { console.log(`[SUCCESS] ${text}`); }
+        function logWarn(text) { console.warn(`[WARN] ${text}`); }
+        function logError(text) { console.error(`[ERROR] ${text}`); }
+
+        function clearDebuggerLogs() {
+            document.getElementById('event-logs-list').innerHTML = '<div class="text-slate-500 italic p-3 text-center">Đã xoá lịch sử logs.</div>';
+            eventCounter = 0;
+            document.getElementById('event-counter-badge').textContent = '0';
+        }
+
+        function toggleDebuggerPanel() {
+            const panel = document.getElementById('debugger-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        function switchInspectorTab(tab) {
+            ['events', 'token', 'endpoints'].forEach(t => {
+                const btn = document.getElementById(`inspector-tab-${t}`);
+                const content = document.getElementById(`inspector-content-${t}`);
+                if (t === tab) {
+                    btn.className = 'flex-1 py-2 text-center text-brand-600 border-b-2 border-brand-600 dark:text-brand-400 font-bold transition-colors';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'flex-1 py-2 text-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors';
+                    content.classList.add('hidden');
+                }
+            });
+            refreshIcons();
+        }
+
+        // 8. HELPERS & UTILITIES
+        function playChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+            } catch (e) {}
+        }
+
+        function showToast(message, type = 'INFO') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let dotColor = 'bg-brand-500';
+            if (type === 'SUCCESS') dotColor = 'bg-emerald-500';
+            if (type === 'WARN') dotColor = 'bg-amber-500';
+            if (type === 'ERROR') dotColor = 'bg-rose-500';
+
+            toast.className = 'px-4 py-2.5 rounded-xl bg-slate-900/95 dark:bg-white text-white dark:text-slate-900 text-xs font-medium shadow-modal flex items-center gap-2 pointer-events-auto backdrop-blur-sm animate-chat-open transition-all duration-200';
+            toast.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor} shrink-0"></span><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 250);
+            }, 3000);
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                refreshIcons();
+            }
+            showToast(isDark ? 'Đã chuyển sang Dark Mode' : 'Đã chuyển sang Light Mode', 'INFO');
+        }
+
+        function insertEmoji(char) {
+            const input = document.getElementById('chat-message-input');
+            input.value += char;
+            input.focus();
+        }
+
+        function formatTime(isoString) {
+            try {
+                const d = new Date(isoString);
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch {
+                return '';
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, function(m) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m];
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,11 +1,12 @@
 package com.devteria.chat.dto.response;
 
-import com.devteria.chat.entity.ParticipantInfo;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
-
 import java.time.Instant;
 import java.util.List;
+
+import com.devteria.chat.entity.ParticipantInfo;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Data
 @Builder

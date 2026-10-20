@@ -8,12 +8,14 @@ import {
   Sparkle,
   Sun,
   Moon,
+  ChatCircle,
 } from '@phosphor-icons/react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useChat } from '../../context/ChatContext';
 import { SearchSuggestionDropdown } from '../search/SearchSuggestionDropdown';
 import keycloak from '../../keycloak';
 import type { SearchPostResult, SearchUserResult, SearchApiResponse } from '../../types/searchTypes';
@@ -22,6 +24,7 @@ export function Header() {
   const { profile, avatarUrl, fullName } = useProfile();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { toggleRightSidebar, totalUnread } = useChat();
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -220,6 +223,26 @@ export function Header() {
 
       {/* Right Section: Theme Toggle & User Profile */}
       <div className="flex items-center justify-end gap-2.5 w-auto sm:w-[320px]">
+        {/* Chat Service Quick Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleRightSidebar}
+          id="header-chat-toggle"
+          title="Đóng/Mở Chat Service bên phải"
+          aria-label="Tin nhắn"
+          className="relative w-9 h-9 rounded-full bg-[#EEF2FF] dark:bg-indigo-950/70 text-[#4F46E5] dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 flex items-center justify-center transition-all border border-indigo-200/60 dark:border-indigo-800/50 cursor-pointer shadow-2xs"
+        >
+          <ChatCircle weight="bold" className="w-4 h-4" />
+          {totalUnread > 0 && (
+            <span
+              id="header-unread-badge"
+              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#4F46E5] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900"
+            >
+              {totalUnread}
+            </span>
+          )}
+        </button>
+
         {/* Theme Toggle Button */}
         <button
           type="button"

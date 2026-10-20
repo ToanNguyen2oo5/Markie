@@ -78,19 +78,22 @@ public class ChatMessageService {
         conversation.setModifiedDate(now);
         conversationRepository.save(conversation);
 
-        // Convert to response
+        // Convert to response for sender (me = true)
         ChatMessageResponse response = toChatMessageResponse(chatMessage, userId);
 
         // 1. Broadcast to conversation room (clients who have this chat window open)
         socketIOServer.getRoomOperations(request.getConversationId()).sendEvent("receive_message", response);
 
-        // 2. Broadcast to each participant's user room for in-app notification / inbox badge
+        // 2. Broadcast to each participant's user room with recipient-specific response
         for (ParticipantInfo participant : conversation.getParticipants()) {
             if (!userId.equals(participant.getUserId())) {
-                socketIOServer.getRoomOperations(participant.getUserId()).sendEvent("receive_message", response);
+                ChatMessageResponse participantResponse = toChatMessageResponse(chatMessage, participant.getUserId());
                 socketIOServer
                         .getRoomOperations(participant.getUserId())
-                        .sendEvent("new_message_notification", response);
+                        .sendEvent("receive_message", participantResponse);
+                socketIOServer
+                        .getRoomOperations(participant.getUserId())
+                        .sendEvent("new_message_notification", participantResponse);
             }
         }
 

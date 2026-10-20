@@ -1,10 +1,11 @@
 package com.devteria.chat.mapper;
 
-import com.devteria.chat.dto.response.ConversationResponse;
-import com.devteria.chat.entity.Conversation;
+import java.util.List;
+
 import org.mapstruct.Mapper;
 
-import java.util.List;
+import com.devteria.chat.dto.response.ConversationResponse;
+import com.devteria.chat.entity.Conversation;
 
 @Mapper(componentModel = "spring")
 public interface ConversationMapper {

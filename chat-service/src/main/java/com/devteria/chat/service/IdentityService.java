@@ -1,16 +1,18 @@
 package com.devteria.chat.service;
 
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+
 import com.devteria.chat.dto.request.IntrospectRequest;
 import com.devteria.chat.dto.response.IntrospectResponse;
 import com.devteria.chat.repository.httpclient.IdentityClient;
+
 import feign.FeignException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -21,18 +23,14 @@ public class IdentityService {
 
     public IntrospectResponse introspect(IntrospectRequest request) {
         try {
-            var result =  identityClient.introspect(request).getResult();
+            var result = identityClient.introspect(request).getResult();
             if (Objects.isNull(result)) {
-                return IntrospectResponse.builder()
-                        .valid(false)
-                        .build();
+                return IntrospectResponse.builder().valid(false).build();
             }
             return result;
         } catch (FeignException e) {
             log.error("Introspect failed: {}", e.getMessage(), e);
-            return IntrospectResponse.builder()
-                    .valid(false)
-                    .build();
+            return IntrospectResponse.builder().valid(false).build();
         }
     }
 }

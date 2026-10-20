@@ -6,6 +6,7 @@ import keycloak from '../keycloak';
 import { Header } from '../components/feed/Header';
 import { CreatePostCard } from '../components/feed/CreatePostCard';
 import { PostCard } from '../components/feed/PostCard';
+import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ArrowClockwise, Article } from '@phosphor-icons/react';
 
 export interface PostData {
@@ -34,7 +35,7 @@ const postItemVariants = {
     y: 0,
     transition: {
       duration: 0.35,
-      ease: [0.16, 1, 0.3, 1],
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
     },
   },
 };
@@ -135,68 +136,74 @@ export function NewsFeedPage() {
     <div className="min-h-screen bg-[#F1F5F9] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-indigo-500/20 selection:text-indigo-700 dark:selection:text-indigo-300 transition-colors duration-200">
       <Header />
 
-      {/* Main Single-Column Feed */}
-      <main className="flex-1 flex flex-col items-center pt-16 px-4">
-        <div className="w-full max-w-[640px] py-6 space-y-4">
+      {/* ================= MAIN WORKSPACE (BẢNG TIN + CHAT SERVICE BÊN PHẢI) ================= */}
+      <div className="flex-1 flex relative max-w-[1600px] w-full mx-auto pt-14">
+        {/* KHU VỰC GIỮA: BẢNG TIN (FEED) */}
+        <main id="feed-container" className="flex-1 flex justify-center px-4 sm:px-6 pt-6 pb-24 transition-all duration-300">
+          <div className="w-full max-w-[640px] space-y-4">
 
-          {/* Create Post Card */}
-          <CreatePostCard onPostCreated={handlePostCreated} />
+            {/* Create Post Card */}
+            <CreatePostCard onPostCreated={handlePostCreated} />
 
-          {/* Posts Feed */}
-          {initialLoading ? (
-            <div className="space-y-4">
-              <PostCardSkeleton />
-              <PostCardSkeleton />
-              <PostCardSkeleton />
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="genv-card rounded-2xl p-12 text-center border border-slate-200/90 dark:border-slate-800/80 flex flex-col items-center justify-center shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-3">
-                <Article className="w-6 h-6" />
+            {/* Posts Feed */}
+            {initialLoading ? (
+              <div className="space-y-4">
+                <PostCardSkeleton />
+                <PostCardSkeleton />
+                <PostCardSkeleton />
               </div>
-              <h3 className="font-heading font-semibold text-slate-900 dark:text-slate-100 text-base">
-                Chưa có bài viết nào
-              </h3>
-              <p className="font-sans text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm">
-                Hãy là người đầu tiên chia sẻ góc nhìn hoặc bài viết của bạn với cộng đồng GenV.
-              </p>
-            </div>
-          ) : (
-            <motion.div
-              variants={postContainerVariants}
-              initial="hidden"
-              animate="visible"
-              className="space-y-4"
-            >
-              <AnimatePresence>
-                {posts.map((post) => (
-                  <motion.div key={post.id} variants={postItemVariants}>
-                    <PostCard post={post} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          )}
+            ) : posts.length === 0 ? (
+              <div className="genv-card rounded-2xl p-12 text-center border border-slate-200/90 dark:border-slate-800/80 flex flex-col items-center justify-center shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-3">
+                  <Article className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading font-semibold text-slate-900 dark:text-slate-100 text-base">
+                  Chưa có bài viết nào
+                </h3>
+                <p className="font-sans text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm">
+                  Hãy là người đầu tiên chia sẻ góc nhìn hoặc bài viết của bạn với cộng đồng GenV.
+                </p>
+              </div>
+            ) : (
+              <motion.div
+                variants={postContainerVariants}
+                initial="hidden"
+                animate="visible"
+                className="space-y-4"
+              >
+                <AnimatePresence>
+                  {posts.map((post) => (
+                    <motion.div key={post.id} variants={postItemVariants}>
+                      <PostCard post={post} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
 
-          {/* Infinite Scroll Trigger Sentinel */}
-          <div ref={sentinelRef} className="h-2" />
+            {/* Infinite Scroll Trigger Sentinel */}
+            <div ref={sentinelRef} className="h-2" />
 
-          {loading && !initialLoading && (
-            <div className="flex justify-center py-6">
-              <ArrowClockwise className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-spin" />
-            </div>
-          )}
+            {loading && !initialLoading && (
+              <div className="flex justify-center py-6">
+                <ArrowClockwise className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-spin" />
+              </div>
+            )}
 
-          {!hasNext && posts.length > 0 && (
-            <div className="py-8 text-center">
-              <span className="font-code text-xs text-slate-500 dark:text-slate-400 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60">
-                Đã hiển thị toàn bộ bài viết
-              </span>
-            </div>
-          )}
+            {!hasNext && posts.length > 0 && (
+              <div className="py-8 text-center">
+                <span className="font-code text-xs text-slate-500 dark:text-slate-400 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60">
+                  Đã hiển thị toàn bộ bài viết
+                </span>
+              </div>
+            )}
 
-        </div>
-      </main>
+          </div>
+        </main>
+
+        {/* KHU VỰC CHAT SERVICE Ở BÊN PHẢI (RIGHT SIDEBAR) */}
+        <ChatSidebar />
+      </div>
     </div>
   );
 }

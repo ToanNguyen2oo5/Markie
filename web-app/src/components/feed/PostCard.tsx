@@ -1,8 +1,9 @@
 import { useState, memo } from 'react';
-import { ChatCircle, Copy, Check } from '@phosphor-icons/react';
+import { ChatCircle, Copy, Check, PaperPlaneTilt } from '@phosphor-icons/react';
 import type { PostData } from '../../pages/NewsFeedPage';
 import { CommentModal } from './CommentModal';
 import { useProfile } from '../../context/ProfileContext';
+import { useChat } from '../../context/ChatContext';
 
 interface PostCardProps {
   post: PostData;
@@ -29,6 +30,7 @@ function getAvatarUrl(userId: string): string {
 
 export const PostCard = memo(function PostCard({ post }: PostCardProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
+  const { openChat } = useChat();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
@@ -101,15 +103,36 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
 
       {/* Divider */}
       <div className="border-t border-slate-100 dark:border-slate-800/80 mt-3 pt-3 flex items-center justify-between">
-        {/* Comment Action Button */}
-        <button
-          type="button"
-          onClick={() => setIsCommentModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all text-xs font-heading font-medium cursor-pointer"
-        >
-          <ChatCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span>Bình luận</span>
-        </button>
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Comment Action Button */}
+          <button
+            type="button"
+            onClick={() => setIsCommentModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all text-xs font-heading font-medium cursor-pointer"
+          >
+            <ChatCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Bình luận</span>
+          </button>
+
+          {/* Quick Chat Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const targetId = post.userId || post.username;
+              if (targetId) {
+                openChat(targetId, {
+                  name: post.username ? `@${post.username}` : 'Tác giả',
+                  role: post.username ? `@${post.username}` : 'Người dùng',
+                  avatar: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(targetId)}&size=80`,
+                });
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all text-xs font-heading font-medium cursor-pointer"
+          >
+            <PaperPlaneTilt className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Nhắn tin nhanh</span>
+          </button>
+        </div>
 
         <span className="font-code text-[11px] text-slate-400 dark:text-slate-600">
           ID: {post.id.slice(0, 8)}

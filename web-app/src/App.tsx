@@ -3,7 +3,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ProfileProvider } from './context/ProfileContext';
+import { ChatProvider } from './context/ChatContext';
 import { ToastContainer } from './components/ToastContainer';
+import { FloatingChatWindow } from './components/chat/FloatingChatWindow';
 import LandingPage from './pages/LandingPage';
 import { NewsFeedPage } from './pages/NewsFeedPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -16,19 +18,22 @@ export function App() {
       <AuthProvider>
         <ToastProvider>
           <ProfileProvider>
-          <ToastContainer />
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/feed" element={<NewsFeedPage />} />
-            <Route path="/friends" element={<FriendsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/:userId" element={<ProfilePage />} />
-            <Route path="/search" element={<SearchPage />} />
-          </Routes>
-        </ProfileProvider>
-      </ToastProvider>
-    </AuthProvider>
-  </ThemeProvider>
+            <ChatProvider>
+              <ToastContainer />
+              <FloatingChatWindow />
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/feed" element={<NewsFeedPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/profile/:userId" element={<ProfilePage />} />
+                <Route path="/search" element={<SearchPage />} />
+              </Routes>
+            </ChatProvider>
+          </ProfileProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

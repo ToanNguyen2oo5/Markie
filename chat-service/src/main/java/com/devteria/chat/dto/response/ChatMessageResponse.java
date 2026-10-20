@@ -1,10 +1,12 @@
 package com.devteria.chat.dto.response;
 
+import java.time.Instant;
+
 import com.devteria.chat.entity.ParticipantInfo;
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.time.Instant;
 
 @Data
 @Builder
@@ -17,5 +19,7 @@ public class ChatMessageResponse {
     boolean me;
     String message;
     ParticipantInfo sender;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     Instant createdDate;
 }

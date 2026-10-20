@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProfile, type ProfileData } from '../context/ProfileContext';
 import { FriendActionButton } from '../components/social/FriendActionButton';
 import { FriendsList } from '../components/social/FriendsList';
+import { useChat } from '../context/ChatContext';
 import keycloak from '../keycloak';
 
 // ─── GPU-Accelerated Animation Variants (No heavy spring physics loop) ─────────
@@ -102,6 +103,7 @@ export function ProfilePage() {
   const { authenticated, logout } = useAuth();
   const navigate = useNavigate();
   const { userId } = useParams();
+  const { openChat } = useChat();
 
   const {
     profile: myProfile,
@@ -386,9 +388,17 @@ export function ProfilePage() {
                       />
                       <button
                         type="button"
-                        className="flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 transition-all cursor-pointer"
+                        onClick={() => {
+                          const targetId = activeProfile.userId || activeProfile.username;
+                          openChat(targetId, {
+                            name: activeFullName || activeProfile.username,
+                            role: `@${activeProfile.username}`,
+                            avatar: activeProfile.avatar || `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(targetId)}&size=80`,
+                          });
+                        }}
+                        className="flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 hover:text-white border border-zinc-700/60 rounded-xl text-sm font-medium text-zinc-200 transition-all cursor-pointer hover:border-zinc-500 active:scale-95 shadow-sm"
                       >
-                        <ChatCircleText className="w-4 h-4" />
+                        <ChatCircleText className="w-4 h-4 text-indigo-400" />
                         Nhắn tin
                       </button>
                     </div>
