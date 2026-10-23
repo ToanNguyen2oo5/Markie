@@ -50,10 +50,11 @@ export const SearchPostCard = memo(function SearchPostCard({ post, keyword }: Se
   const timeAgo = formatTime(post.createdDate);
   const avatarUrl = getAvatarUrl(post.userId);
 
-  // Truncate long content for preview
-  const previewContent = post.content.length > 300
-    ? post.content.slice(0, 300) + '...'
-    : post.content;
+  // Truncate long content for preview, with fallback for attachment-only posts
+  const safeContent = post.content?.trim() || 'Bài viết có tệp đính kèm';
+  const previewContent = safeContent.length > 300
+    ? safeContent.slice(0, 300) + '...'
+    : safeContent;
 
   return (
     <article className="w-full bg-[#242526] rounded-xl shadow-sm border border-[#393A3B]/30 flex flex-col hover:border-[#393A3B]/80 transition-all duration-200 group">

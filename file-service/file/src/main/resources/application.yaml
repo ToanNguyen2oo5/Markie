@@ -33,9 +33,10 @@ spring:
         spring.json.trusted.packages: "*"
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
+      max-file-size: 27MB
+      max-request-size: 30MB
 app:
   file:
-    storage-dir: C:\uploads
-    download-prefix: http://localhost:8888/file/media/download/
+    storage-dir: ${STORAGE_DIR:C:\uploads}
+    download-prefix: ${DOWNLOAD_PREFIX:http://localhost:8888/file/media/download/}
+    preview-prefix: ${PREVIEW_PREFIX:http://localhost:8888/file/media/preview/}

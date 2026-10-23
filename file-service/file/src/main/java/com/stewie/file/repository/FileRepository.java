@@ -29,16 +29,19 @@ public class FileRepository {
 
     public FileInfo store(MultipartFile file) throws IOException {
         Path folder = Paths.get(storageDir);
+        if (!Files.exists(folder)) {
+            Files.createDirectories(folder);
+        }
 
         String fileExtension = StringUtils.getFilenameExtension(file.getOriginalFilename());
 
         String fileName = Objects.isNull(fileExtension)
                 ? UUID.randomUUID().toString()
-                :UUID.randomUUID() + "." + fileExtension;
+                : UUID.randomUUID() + "." + fileExtension;
 
         Path filePath = folder.resolve(fileName).normalize().toAbsolutePath();
 
-        Files.copy(file.getInputStream(),filePath, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
         return FileInfo.builder()
                 .name(fileName)
                 .path(filePath.toString())
@@ -51,6 +54,9 @@ public class FileRepository {
 
     public FileInfo storeBytes(byte[] fileData, String originalFilename, String contentType) throws IOException {
         Path folder = Paths.get(storageDir);
+        if (!Files.exists(folder)) {
+            Files.createDirectories(folder);
+        }
 
         String fileExtension = StringUtils.getFilenameExtension(originalFilename);
 
@@ -79,9 +85,8 @@ public class FileRepository {
     }
 
     public Resource read(FileMgmt fileMgmt) throws IOException {
-        var data = Files.readAllBytes(Path.of(fileMgmt.getPath()));
-
-        return new ByteArrayResource(data);
+        Path path = Path.of(fileMgmt.getPath());
+        return new org.springframework.core.io.UrlResource(path.toUri());
     }
 
 }

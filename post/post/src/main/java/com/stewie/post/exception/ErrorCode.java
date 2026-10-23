@@ -19,7 +19,11 @@ public enum ErrorCode {
             1011, "username contains invalid character, please choose another one", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1012, "user not found", HttpStatus.BAD_REQUEST),
     POST_NOT_EXISTED(1013, "post not found", HttpStatus.BAD_REQUEST),
-    COMMENT_NOT_EXISTED(1014, "comment not found", HttpStatus.BAD_REQUEST);
+    COMMENT_NOT_EXISTED(1014, "comment not found", HttpStatus.BAD_REQUEST),
+    INVALID_POST_CONTENT(1015, "Post must have content or at least one file", HttpStatus.BAD_REQUEST),
+    FILE_ATTACHMENT_FAILED(1016, "Failed to attach files to post", HttpStatus.BAD_REQUEST),
+    TOO_MANY_FILES(1017, "Cannot attach more than 10 files per post", HttpStatus.BAD_REQUEST),
+    REQUEST_CONFLICT(1018, "Request conflict with existing clientRequestId", HttpStatus.CONFLICT);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

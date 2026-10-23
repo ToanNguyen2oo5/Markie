@@ -9,14 +9,8 @@ import { PostCard } from '../components/feed/PostCard';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { ArrowClockwise, Article } from '@phosphor-icons/react';
 
-export interface PostData {
-  id: string;
-  userId: string;
-  username: string | null;
-  content: string;
-  createdDate: string;
-  modifiedDate: string;
-}
+import type { PostData } from '../types/postTypes';
+export type { PostData };
 
 const postContainerVariants = {
   hidden: { opacity: 0 },

@@ -35,6 +35,10 @@ export default defineConfig({
       '/chat': {
         target: 'http://localhost:8888',
         changeOrigin: true,
+      },
+      '/file': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
       }
     }
   }

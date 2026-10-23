@@ -12,4 +12,6 @@ public class FileResponse {
     String originalName;
     String ownerId;
     String url;
+    String contentType;
+    Long size;
 }

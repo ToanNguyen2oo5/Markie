@@ -1,11 +1,13 @@
 package com.stewie.post.dto.response;
 
+import com.stewie.post.entity.PostFile;
 import com.stewie.post.entity.PostStats;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -14,16 +16,17 @@ import java.time.Instant;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PostResponse {
     String id;
-
     String userId;
-
     String username;
-
     String content;
+    String status;
 
+    @Builder.Default
+    List<PostFile> files = new ArrayList<>();
+
+    @Builder.Default
     PostStats stats = new PostStats();
 
     Instant createdDate;
-
     Instant modifiedDate;
 }

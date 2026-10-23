@@ -40,4 +40,11 @@ public class PostController {
                 .result(postService.getPostById(postId))
                 .build();
     }
+
+    @GetMapping("/create-status/{clientRequestId}")
+    ApiResponse<com.stewie.post.dto.response.CreateStatusResponse> getCreateStatus(@PathVariable String clientRequestId) {
+        return ApiResponse.<com.stewie.post.dto.response.CreateStatusResponse>builder()
+                .result(postService.getCreateStatus(clientRequestId))
+                .build();
+    }
 }

@@ -15,7 +15,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
-           "/media/download/**"
+            "/media/download/**",
+            "/internal/post-attachments/**"
     };
 
     @Bean
@@ -27,10 +28,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.GET,PUBLIC_ENDPOINTS)
-                .permitAll()
-                .anyRequest()
-                .authenticated());
+        httpSecurity.authorizeHttpRequests(request -> request
+                .requestMatchers(HttpMethod.GET, "/media/download/**").permitAll()
+                .requestMatchers("/internal/post-attachments/**").permitAll()
+                .anyRequest().authenticated());
 
         httpSecurity.oauth2ResourceServer(
                 oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))

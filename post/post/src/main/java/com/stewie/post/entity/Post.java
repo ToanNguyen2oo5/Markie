@@ -8,6 +8,9 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,6 +26,17 @@ public class Post {
 
     String content;
 
+    PostStatus status;
+
+    @Field("client_request_id")
+    String clientRequestId;
+
+    List<String> fileIds;
+
+    @Builder.Default
+    List<PostFile> files = new ArrayList<>();
+
+    @Builder.Default
     PostStats stats = new PostStats();
 
     Instant createdDate;

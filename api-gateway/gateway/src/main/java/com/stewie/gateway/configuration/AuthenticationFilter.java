@@ -39,7 +39,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     // external clients
     private static final List<String> INTERNAL_ENDPOINTS = List.of(
             "/profile/internal/users",
-            "/post/internal");
+            "/post/internal",
+            "/file/internal");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

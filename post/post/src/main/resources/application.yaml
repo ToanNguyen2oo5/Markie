@@ -24,4 +24,6 @@ spring:
 app:
   services:
     profile:
-      url: http://localhost:8081/profile
+      url: ${PROFILE_SERVICE_URL:http://localhost:8081/profile}
+    file:
+      url: ${FILE_SERVICE_URL:http://localhost:8084/file}
