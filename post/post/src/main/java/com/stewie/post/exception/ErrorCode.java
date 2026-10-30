@@ -23,7 +23,9 @@ public enum ErrorCode {
     INVALID_POST_CONTENT(1015, "Post must have content or at least one file", HttpStatus.BAD_REQUEST),
     FILE_ATTACHMENT_FAILED(1016, "Failed to attach files to post", HttpStatus.BAD_REQUEST),
     TOO_MANY_FILES(1017, "Cannot attach more than 10 files per post", HttpStatus.BAD_REQUEST),
-    REQUEST_CONFLICT(1018, "Request conflict with existing clientRequestId", HttpStatus.CONFLICT);
+    REQUEST_CONFLICT(1018, "Request conflict with existing clientRequestId", HttpStatus.CONFLICT),
+    INVALID_COMMENT_CONTENT(1019, "Comment must be between 1 and 2000 characters", HttpStatus.BAD_REQUEST),
+    INVALID_PARENT_COMMENT(1020, "Parent comment is invalid", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

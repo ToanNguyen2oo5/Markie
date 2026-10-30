@@ -1,23 +1,32 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
-import { X, PaperPlaneTilt, ArrowClockwise, ChatCircleDots } from '@phosphor-icons/react';
+import {
+  X,
+  PaperPlaneTilt,
+  ArrowClockwise,
+  ChatCircleDots,
+  Heart,
+  PencilSimple,
+  Trash,
+  Check,
+} from '@phosphor-icons/react';
 import keycloak from '../../keycloak';
 import { useProfile } from '../../context/ProfileContext';
+import { useToast } from '../../context/ToastContext';
+import {
+  likeComment,
+  unlikeComment,
+  updateComment as apiUpdateComment,
+  deleteComment as apiDeleteComment,
+} from '../../services/postInteractionApi';
+import type { CommentData } from '../../types/postTypes';
+
+export type { CommentData };
 
 interface CommentModalProps {
   postId: string;
+  postOwnerId?: string;
+  onCommentCountChange?: (delta: number) => void;
   onClose: () => void;
-}
-
-export interface CommentData {
-  id: string;
-  postId: string;
-  userId: string;
-  username: string | null;
-  parentId: string | null;
-  content: string;
-  likeCount: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface CommentWithReplies extends CommentData {
@@ -27,6 +36,8 @@ interface CommentWithReplies extends CommentData {
   showReplies: boolean;
 }
 
+const MAX_COMMENT_LENGTH = 2000;
+
 function getAvatarUrl(userId: string): string {
   return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(userId)}&size=36`;
 }
@@ -34,13 +45,24 @@ function getAvatarUrl(userId: string): string {
 const dateCache = new Map<string, string>();
 function formatCommentTime(iso: string): string {
   if (dateCache.has(iso)) return dateCache.get(iso)!;
-  const result = new Date(iso).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const result = new Date(iso).toLocaleDateString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+  });
   dateCache.set(iso, result);
   return result;
 }
 
-export const CommentModal = memo(function CommentModal({ postId, onClose }: CommentModalProps) {
+export const CommentModal = memo(function CommentModal({
+  postId,
+  postOwnerId,
+  onCommentCountChange,
+  onClose,
+}: CommentModalProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
+  const toast = useToast();
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -49,56 +71,70 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
   const [hasNext, setHasNext] = useState(true);
   const loadingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const likeInFlightRef = useRef<Set<string>>(new Set());
 
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const myUserId = profile?.userId;
+  const isPostOwner = Boolean(myUserId && postOwnerId && myUserId === postOwnerId);
 
   const resolveAvatar = useMemo(
-    () => (userId: string) => profile?.userId === userId ? myAvatarUrl : getAvatarUrl(userId),
-    [profile?.userId, myAvatarUrl]
+    () => (userId: string) => (myUserId === userId ? myAvatarUrl : getAvatarUrl(userId)),
+    [myUserId, myAvatarUrl]
   );
 
-  const fetchComments = useCallback(async (currentCursor: string | null) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
+  const fetchComments = useCallback(
+    async (currentCursor: string | null) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
 
-    try {
-      await keycloak.updateToken(30);
-      const params = new URLSearchParams({ limit: '10' });
-      if (currentCursor) params.set('cursor', currentCursor);
+      try {
+        await keycloak.updateToken(30);
+        const params = new URLSearchParams({ limit: '10' });
+        if (currentCursor) params.set('cursor', currentCursor);
 
-      const res = await fetch(`/post/comment/post/${postId}?${params}`, {
-        headers: { Authorization: `Bearer ${keycloak.token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.code === 1000) {
-          const page = data.result;
-          const newComments: CommentWithReplies[] = (page.data as CommentData[]).map(c => ({
-            ...c,
-            replies: [],
-            replyCursor: null,
-            hasMoreReplies: true,
-            showReplies: false,
-          }));
-          setComments(prev => currentCursor ? [...prev, ...newComments] : newComments);
-          setCursor(page.nextCursor ?? null);
-          setHasNext(page.hasNext);
+        const res = await fetch(`/post/comment/post/${postId}?${params}`, {
+          headers: { Authorization: `Bearer ${keycloak.token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.code === 1000) {
+            const page = data.result;
+            const newComments: CommentWithReplies[] = (page.data as CommentData[]).map((c) => ({
+              ...c,
+              replyCount: c.replyCount ?? 0,
+              likeCount: c.likeCount ?? 0,
+              likedByMe: Boolean(c.likedByMe),
+              edited: Boolean(c.edited),
+              replies: [],
+              replyCursor: null,
+              hasMoreReplies: (c.replyCount ?? 0) > 0,
+              showReplies: false,
+            }));
+            setComments((prev) => (currentCursor ? [...prev, ...newComments] : newComments));
+            setCursor(page.nextCursor ?? null);
+            setHasNext(page.hasNext);
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch comments', error);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch comments', error);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, [postId]);
+    },
+    [postId]
+  );
 
   useEffect(() => {
     fetchComments(null);
   }, [fetchComments]);
 
   const fetchReplies = async (parentId: string) => {
-    const comment = comments.find(c => c.id === parentId);
+    const comment = comments.find((c) => c.id === parentId);
     const replyCursor = comment?.replyCursor ?? null;
 
     try {
@@ -107,22 +143,34 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
       if (replyCursor) params.set('cursor', replyCursor);
 
       const res = await fetch(`/post/comment/replies/${parentId}?${params}`, {
-        headers: { Authorization: `Bearer ${keycloak.token}` }
+        headers: { Authorization: `Bearer ${keycloak.token}` },
       });
       if (res.ok) {
         const data = await res.json();
         if (data.code === 1000) {
           const page = data.result;
-          setComments(prev => prev.map(c => {
-            if (c.id !== parentId) return c;
-            return {
-              ...c,
-              replies: replyCursor ? [...c.replies, ...page.data] : page.data,
-              replyCursor: page.nextCursor ?? null,
-              hasMoreReplies: page.hasNext,
-              showReplies: true,
-            };
+          const incoming = (page.data as CommentData[]).map((r) => ({
+            ...r,
+            likeCount: r.likeCount ?? 0,
+            likedByMe: Boolean(r.likedByMe),
+            edited: Boolean(r.edited),
           }));
+          setComments((prev) =>
+            prev.map((c) => {
+              if (c.id !== parentId) return c;
+              const existingIds = new Set(c.replies.map((r) => r.id));
+              const merged = replyCursor
+                ? [...c.replies, ...incoming.filter((r) => !existingIds.has(r.id))]
+                : incoming;
+              return {
+                ...c,
+                replies: merged,
+                replyCursor: page.nextCursor ?? null,
+                hasMoreReplies: page.hasNext,
+                showReplies: true,
+              };
+            })
+          );
         }
       }
     } catch (error) {
@@ -131,11 +179,17 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim() || submitting) return;
+    const trimmed = newComment.trim();
+    if (!trimmed || submitting) return;
+    if (trimmed.length > MAX_COMMENT_LENGTH) {
+      toast.error(`Bình luận tối đa ${MAX_COMMENT_LENGTH} ký tự`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await keycloak.updateToken(30);
-      const body: Record<string, string> = { content: newComment.trim() };
+      const body: Record<string, string> = { content: trimmed };
       if (replyingTo) {
         body.parentId = replyingTo.id;
       }
@@ -144,46 +198,274 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${keycloak.token}`
+          Authorization: `Bearer ${keycloak.token}`,
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
         if (data.code === 1000) {
           const created = data.result as CommentData;
           if (replyingTo) {
-            setComments(prev => prev.map(c => {
-              if (c.id !== replyingTo.id) return c;
-              return { ...c, replies: [created, ...c.replies], showReplies: true };
-            }));
+            const rootId = created.parentId || replyingTo.id;
+            setComments((prev) =>
+              prev.map((c) => {
+                if (c.id !== rootId) return c;
+                return {
+                  ...c,
+                  replyCount: (c.replyCount ?? 0) + 1,
+                  replies: [created, ...c.replies],
+                  showReplies: true,
+                };
+              })
+            );
           } else {
-            setComments(prev => [{
-              ...created,
-              replies: [],
-              replyCursor: null,
-              hasMoreReplies: true,
-              showReplies: false,
-            }, ...prev]);
+            setComments((prev) => [
+              {
+                ...created,
+                replyCount: 0,
+                likeCount: 0,
+                likedByMe: false,
+                edited: false,
+                replies: [],
+                replyCursor: null,
+                hasMoreReplies: false,
+                showReplies: false,
+              },
+              ...prev,
+            ]);
           }
+          onCommentCountChange?.(1);
           setNewComment('');
           setReplyingTo(null);
         }
       }
     } catch (error) {
       console.error('Failed to post comment', error);
+      toast.error('Không thể gửi bình luận');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleReplyClick = (commentId: string, username: string) => {
-    setReplyingTo({ id: commentId, username });
+  const handleToggleCommentLike = async (target: CommentData) => {
+    if (likeInFlightRef.current.has(target.id)) return;
+    likeInFlightRef.current.add(target.id);
+
+    const prevLiked = Boolean(target.likedByMe);
+    const prevCount = target.likeCount ?? 0;
+    const nextLiked = !prevLiked;
+    const nextCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+    const applyUpdate = (id: string, liked: boolean, likeCount: number) => {
+      setComments((prev) =>
+        prev.map((c) => {
+          if (c.id === id) return { ...c, likedByMe: liked, likeCount };
+          if (c.replies.some((r) => r.id === id)) {
+            return {
+              ...c,
+              replies: c.replies.map((r) => (r.id === id ? { ...r, likedByMe: liked, likeCount } : r)),
+            };
+          }
+          return c;
+        })
+      );
+    };
+
+    applyUpdate(target.id, nextLiked, nextCount);
+    try {
+      const res = nextLiked ? await likeComment(target.id) : await unlikeComment(target.id);
+      applyUpdate(target.id, res.liked, res.likeCount);
+    } catch (err) {
+      applyUpdate(target.id, prevLiked, prevCount);
+      toast.error(err instanceof Error ? err.message : 'Thao tác thất bại');
+    } finally {
+      likeInFlightRef.current.delete(target.id);
+    }
+  };
+
+  const startEdit = (item: CommentData) => {
+    setEditingId(item.id);
+    setEditingText(item.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText('');
+  };
+
+  const saveEdit = async (commentId: string) => {
+    const trimmed = editingText.trim();
+    if (!trimmed || savingEdit) return;
+    if (trimmed.length > MAX_COMMENT_LENGTH) {
+      toast.error(`Bình luận tối đa ${MAX_COMMENT_LENGTH} ký tự`);
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const updated = await apiUpdateComment(commentId, trimmed);
+      setComments((prev) =>
+        prev.map((c) => {
+          if (c.id === commentId) {
+            return { ...c, content: updated.content, edited: true, updatedAt: updated.updatedAt };
+          }
+          if (c.replies.some((r) => r.id === commentId)) {
+            return {
+              ...c,
+              replies: c.replies.map((r) =>
+                r.id === commentId
+                  ? { ...r, content: updated.content, edited: true, updatedAt: updated.updatedAt }
+                  : r
+              ),
+            };
+          }
+          return c;
+        })
+      );
+      cancelEdit();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không thể sửa bình luận');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async (target: CommentData, isRoot: boolean) => {
+    try {
+      await apiDeleteComment(target.id);
+      if (isRoot) {
+        const rootObj = comments.find((c) => c.id === target.id);
+        const removedCount = 1 + Math.max(rootObj?.replyCount ?? 0, rootObj?.replies.length ?? 0);
+        setComments((prev) => prev.filter((c) => c.id !== target.id));
+        onCommentCountChange?.(-removedCount);
+      } else {
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id !== target.parentId) return c;
+            return {
+              ...c,
+              replyCount: Math.max(0, (c.replyCount ?? 1) - 1),
+              replies: c.replies.filter((r) => r.id !== target.id),
+            };
+          })
+        );
+        onCommentCountChange?.(-1);
+      }
+      if (editingId === target.id) cancelEdit();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không thể xóa bình luận');
+    }
+  };
+
+  const handleReplyClick = (rootCommentId: string, username: string) => {
+    setReplyingTo({ id: rootCommentId, username });
     inputRef.current?.focus();
   };
 
   const cancelReply = () => {
     setReplyingTo(null);
+  };
+
+  const renderCommentActions = (item: CommentData, rootId: string, isRoot: boolean) => {
+    const isMine = Boolean(myUserId && item.userId === myUserId);
+    const canDelete = isMine || isPostOwner;
+
+    return (
+      <div className="flex items-center gap-3 mt-1.5 px-2 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+        <span className="font-code text-slate-500 dark:text-slate-400">
+          {formatCommentTime(item.createdAt)}
+        </span>
+        {item.edited && <span className="italic text-slate-400 dark:text-slate-500">(đã chỉnh sửa)</span>}
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => handleToggleCommentLike(item)}
+          className={`inline-flex items-center gap-1 font-heading font-medium transition-colors cursor-pointer ${
+            item.likedByMe
+              ? 'text-rose-600 dark:text-rose-400'
+              : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'
+          }`}
+        >
+          <Heart className="w-3.5 h-3.5" weight={item.likedByMe ? 'fill' : 'regular'} />
+          <span>Thích{item.likeCount > 0 ? ` (${item.likeCount})` : ''}</span>
+        </button>
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() => handleReplyClick(rootId, item.username ?? 'Người dùng')}
+          className="font-heading font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer"
+        >
+          Phản hồi
+        </button>
+        {isMine && editingId !== item.id && (
+          <>
+            <span>·</span>
+            <button
+              type="button"
+              onClick={() => startEdit(item)}
+              className="inline-flex items-center gap-1 font-heading font-medium text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+            >
+              <PencilSimple className="w-3 h-3" />
+              <span>Sửa</span>
+            </button>
+          </>
+        )}
+        {canDelete && (
+          <>
+            <span>·</span>
+            <button
+              type="button"
+              onClick={() => handleDelete(item, isRoot)}
+              className="inline-flex items-center gap-1 font-heading font-medium text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+            >
+              <Trash className="w-3 h-3" />
+              <span>Xóa</span>
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderBubbleContent = (item: CommentData, textSizeClass: string) => {
+    if (editingId === item.id) {
+      return (
+        <div className="space-y-2 min-w-[220px]">
+          <textarea
+            value={editingText}
+            onChange={(e) => setEditingText(e.target.value)}
+            rows={2}
+            maxLength={MAX_COMMENT_LENGTH}
+            className="w-full rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-slate-900 border border-indigo-400 dark:border-indigo-500 focus:outline-none text-slate-900 dark:text-slate-100"
+          />
+          <div className="flex items-center justify-end gap-2 text-xs">
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              disabled={!editingText.trim() || savingEdit}
+              onClick={() => saveEdit(item.id)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold cursor-pointer"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Lưu</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <p className={`font-sans ${textSizeClass} text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed`}>
+        {item.content}
+      </p>
+    );
   };
 
   return (
@@ -193,13 +475,15 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
     >
       <div
         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl w-full max-w-[660px] flex flex-col max-h-[85vh] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden text-slate-900 dark:text-slate-100"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <ChatCircleDots className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 text-base">Bình luận bài viết</h3>
+            <h3 className="font-heading font-bold text-slate-900 dark:text-slate-100 text-base">
+              Bình luận bài viết
+            </h3>
           </div>
           <button
             type="button"
@@ -222,11 +506,15 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
               <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/40 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-3">
                 <ChatCircleDots className="w-6 h-6" />
               </div>
-              <p className="font-heading font-semibold text-slate-800 dark:text-slate-200 text-sm">Chưa có bình luận nào</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Hãy là người đầu tiên chia sẻ góc nhìn của bạn.</p>
+              <p className="font-heading font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                Chưa có bình luận nào
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Hãy là người đầu tiên chia sẻ góc nhìn của bạn.
+              </p>
             </div>
           ) : (
-            comments.map(comment => (
+            comments.map((comment) => (
               <div key={comment.id} className="space-y-2">
                 {/* Root comment */}
                 <div className="flex gap-3">
@@ -240,43 +528,28 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
                       <span className="font-heading font-semibold text-xs text-slate-900 dark:text-slate-100 block mb-1">
                         {comment.username ?? 'Người dùng'}
                       </span>
-                      <p className="font-sans text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                        {comment.content}
-                      </p>
+                      {renderBubbleContent(comment, 'text-sm')}
                     </div>
 
-                    {/* Metadata & Reply trigger */}
-                    <div className="flex items-center gap-3 mt-1.5 px-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span className="font-code text-slate-500 dark:text-slate-400">
-                        {formatCommentTime(comment.createdAt)}
-                      </span>
-                      <span>·</span>
-                      <button
-                        type="button"
-                        onClick={() => handleReplyClick(comment.id, comment.username ?? 'Người dùng')}
-                        className="font-heading font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer"
-                      >
-                        Phản hồi
-                      </button>
-                    </div>
+                    {renderCommentActions(comment, comment.id, true)}
                   </div>
                 </div>
 
                 {/* Toggle replies */}
-                {!comment.showReplies && (
+                {!comment.showReplies && (comment.replyCount ?? 0) > 0 && (
                   <button
                     type="button"
                     onClick={() => fetchReplies(comment.id)}
                     className="font-heading text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold ml-11 transition-colors cursor-pointer"
                   >
-                    Xem phản hồi
+                    Xem {comment.replyCount} phản hồi
                   </button>
                 )}
 
                 {/* Nested Replies */}
                 {comment.showReplies && comment.replies.length > 0 && (
                   <div className="ml-11 space-y-2.5 border-l border-slate-200 dark:border-slate-700/60 pl-3">
-                    {comment.replies.map(reply => (
+                    {comment.replies.map((reply) => (
                       <div key={reply.id} className="flex gap-2.5">
                         <img
                           src={resolveAvatar(reply.userId)}
@@ -288,15 +561,9 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
                             <span className="font-heading font-semibold text-xs text-slate-900 dark:text-slate-100 block mb-0.5">
                               {reply.username ?? 'Người dùng'}
                             </span>
-                            <p className="font-sans text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                              {reply.content}
-                            </p>
+                            {renderBubbleContent(reply, 'text-xs')}
                           </div>
-                          <div className="flex items-center gap-2 mt-1 px-2 text-[10px] text-slate-500 dark:text-slate-400">
-                            <span className="font-code">
-                              {formatCommentTime(reply.createdAt)}
-                            </span>
-                          </div>
+                          {renderCommentActions(reply, comment.id, false)}
                         </div>
                       </div>
                     ))}
@@ -305,7 +572,7 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
                       <button
                         type="button"
                         onClick={() => fetchReplies(comment.id)}
-                        className="font-heading text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold"
+                        className="font-heading text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold cursor-pointer"
                       >
                         Xem thêm phản hồi
                       </button>
@@ -331,7 +598,10 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
         {replyingTo && (
           <div className="px-5 py-2 bg-indigo-50 dark:bg-indigo-950/30 border-t border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300">
             <span>
-              Đang phản hồi <strong className="font-heading text-indigo-700 dark:text-indigo-300 font-semibold">{replyingTo.username}</strong>
+              Đang phản hồi{' '}
+              <strong className="font-heading text-indigo-700 dark:text-indigo-300 font-semibold">
+                {replyingTo.username}
+              </strong>
             </span>
             <button
               type="button"
@@ -354,7 +624,10 @@ export const CommentModal = memo(function CommentModal({ postId, onClose }: Comm
             <input
               ref={inputRef}
               type="text"
-              placeholder={replyingTo ? `Phản hồi ${replyingTo.username}...` : "Viết bình luận của bạn..."}
+              maxLength={MAX_COMMENT_LENGTH}
+              placeholder={
+                replyingTo ? `Phản hồi ${replyingTo.username}...` : 'Viết bình luận của bạn...'
+              }
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => {

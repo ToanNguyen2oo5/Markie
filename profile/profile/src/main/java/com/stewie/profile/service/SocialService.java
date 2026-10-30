@@ -91,7 +91,7 @@ public class SocialService {
         String userId = currentUserId();
         ensureUserExists(otherUserId);
         userProfileRepository.unfriend(userId, otherUserId);
-        log.info("User {} unfriended user {}", userId, otherUserId);
+        log.info("User {} unfriended user {} (and removed mutual follows)", userId, otherUserId);
     }
 
     // ── 4. QUERIES ───────────────────────────────────────────────────────────────
@@ -102,6 +102,10 @@ public class SocialService {
         return userProfileRepository.findFriends(userId, skip, size).stream()
                 .map(userProfileMapper::toProfileResponse)
                 .toList();
+    }
+
+    public List<String> getFollowingUserIds(String userId) {
+        return userProfileRepository.findFollowingUserIds(userId, 1000);
     }
 
     public RelationshipStatus getRelationshipStatus(String targetUserId) {

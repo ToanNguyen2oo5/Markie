@@ -18,5 +18,7 @@ public interface ProfileClient {
 
     @PostMapping("/internal/users/batch")
     ApiResponse<List<ProfileResponse>> getProfilesByUserIds(@RequestBody List<String> userIds);
-}
 
+    @GetMapping("/internal/users/{userId}/following-ids")
+    ApiResponse<List<String>> getFollowingIds(@PathVariable String userId);
+}

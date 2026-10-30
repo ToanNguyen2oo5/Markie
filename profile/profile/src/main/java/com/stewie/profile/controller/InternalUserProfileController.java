@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.stewie.profile.dto.ApiResponse;
 import com.stewie.profile.dto.response.ProfileResponse;
+import com.stewie.profile.service.SocialService;
 import com.stewie.profile.service.UserProfileService;
 
 import lombok.AccessLevel;
@@ -17,6 +18,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class InternalUserProfileController {
     UserProfileService userProfileService;
+    SocialService socialService;
 
     @GetMapping("/internal/users/{userId}")
     ApiResponse<ProfileResponse> getProfile(@PathVariable String userId) {
@@ -29,6 +31,13 @@ public class InternalUserProfileController {
     ApiResponse<List<ProfileResponse>> getProfilesBatch(@RequestBody List<String> userIds) {
         return ApiResponse.<List<ProfileResponse>>builder()
                 .result(userProfileService.getProfilesByUserIds(userIds))
+                .build();
+    }
+
+    @GetMapping("/internal/users/{userId}/following-ids")
+    ApiResponse<List<String>> getFollowingIds(@PathVariable String userId) {
+        return ApiResponse.<List<String>>builder()
+                .result(socialService.getFollowingUserIds(userId))
                 .build();
     }
 }

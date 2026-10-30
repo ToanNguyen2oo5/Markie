@@ -11,6 +11,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -25,6 +27,17 @@ public class PostController {
                 .build();
     }
 
+    @GetMapping("/feed")
+    ApiResponse<PageResponse<PostResponse>> getFeed(
+            @RequestParam(defaultValue = "following") String tab,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "5") int limit
+    ){
+        return ApiResponse.<PageResponse<PostResponse>>builder()
+                .result(postService.getFeed(tab, cursor, limit))
+                .build();
+    }
+
     @GetMapping("/my-posts")
     ApiResponse<PageResponse<PostResponse>> getMyPosts(
             @RequestParam(required = false) String cursor,
@@ -34,10 +47,19 @@ public class PostController {
                 .result(postService.getMyPosts(cursor, limit))
                 .build();
     }
+
     @GetMapping("/post/{postId}")
     ApiResponse<PostResponse> getPostById(@PathVariable String postId){
         return ApiResponse.<PostResponse>builder()
                 .result(postService.getPostById(postId))
+                .build();
+    }
+
+    @PostMapping("/share/{postId}")
+    ApiResponse<Map<String, Long>> sharePost(@PathVariable String postId) {
+        long shareCount = postService.sharePost(postId);
+        return ApiResponse.<Map<String, Long>>builder()
+                .result(Map.of("shareCount", shareCount))
                 .build();
     }
 

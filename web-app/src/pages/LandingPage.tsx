@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import keycloak from '../keycloak';
 import {
   ArrowRight,
+  UserPlus,
   ShieldCheck,
   Spinner,
   Sparkle,
@@ -45,6 +46,7 @@ export function LandingPage() {
   const { authenticated } = useAuth();
   const [syncLoading, setSyncLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
   // Sync profile after Keycloak returns
@@ -121,7 +123,7 @@ export function LandingPage() {
   }, [authenticated, syncProfile]);
 
   const handleLogin = async () => {
-    if (loginLoading || syncLoading) return;
+    if (loginLoading || registerLoading || syncLoading) return;
     setLoginError('');
     setLoginLoading(true);
     try {
@@ -129,6 +131,18 @@ export function LandingPage() {
     } catch {
       setLoginError('Unable to open sign in. Please try again.');
       setLoginLoading(false);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (loginLoading || registerLoading || syncLoading) return;
+    setLoginError('');
+    setRegisterLoading(true);
+    try {
+      await keycloak.register();
+    } catch {
+      setLoginError('Unable to open registration. Please try again.');
+      setRegisterLoading(false);
     }
   };
 
@@ -377,7 +391,7 @@ export function LandingPage() {
 
           </div>
 
-      {/* A single entry point to the existing Keycloak sign-in flow. */}
+      {/* Entry points to the Keycloak sign-in and registration flows. */}
       <section
         aria-labelledby="login-heading"
         className="relative flex w-full flex-col justify-between bg-[#FAFBFC] px-7 py-8 text-slate-900 sm:px-12 sm:py-10 lg:min-h-[100dvh] lg:w-[42%] lg:px-10 xl:w-[40%] xl:px-16"
@@ -408,11 +422,11 @@ export function LandingPage() {
             Sign in and pick up where you left off.
           </p>
 
-          <div className="mt-10" aria-busy={loginLoading || syncLoading}>
+          <div className="mt-10 flex flex-col gap-3" aria-busy={loginLoading || registerLoading || syncLoading}>
             <button
               type="button"
               onClick={handleLogin}
-              disabled={loginLoading || syncLoading}
+              disabled={loginLoading || registerLoading || syncLoading}
               className="group flex min-h-14 w-full cursor-pointer items-center justify-between gap-4 rounded-2xl bg-slate-950 px-6 py-4 font-heading text-sm font-semibold text-white shadow-[0_8px_20px_-10px_rgba(15,23,42,0.4)] transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
             >
               <span>{syncLoading ? 'Syncing your account...' : loginLoading ? 'Opening sign in...' : 'Login'}</span>
@@ -422,10 +436,31 @@ export function LandingPage() {
                 <ArrowRight aria-hidden="true" className="h-5 w-5 transition-transform motion-safe:group-hover:translate-x-1" />
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={handleRegister}
+              disabled={loginLoading || registerLoading || syncLoading}
+              className="group flex min-h-14 w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 font-heading text-sm font-semibold text-slate-900 shadow-2xs transition-colors hover:border-emerald-600/40 hover:bg-emerald-50/60 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:opacity-70"
+            >
+              <span>{registerLoading ? 'Opening registration...' : 'Register'}</span>
+              {registerLoading ? (
+                <Spinner aria-hidden="true" className="h-5 w-5 motion-safe:animate-spin" />
+              ) : (
+                <UserPlus aria-hidden="true" className="h-5 w-5 transition-transform motion-safe:group-hover:scale-110" />
+              )}
+            </button>
+
             <span role="status" className="sr-only">
-              {syncLoading ? 'Syncing your account' : loginLoading ? 'Opening sign in' : ''}
+              {syncLoading
+                ? 'Syncing your account'
+                : loginLoading
+                  ? 'Opening sign in'
+                  : registerLoading
+                    ? 'Opening registration'
+                    : ''}
             </span>
-            {loginError && <p role="alert" className="mt-3 text-sm text-red-600">{loginError}</p>}
+            {loginError && <p role="alert" className="mt-1 text-sm text-red-600">{loginError}</p>}
           </div>
 
           <div className="mt-5 flex items-center justify-center gap-2 text-xs text-slate-500">

@@ -18,6 +18,7 @@ public class PostResponse {
     String id;
     String userId;
     String username;
+    String avatar;
     String content;
     String status;
 
@@ -26,6 +27,8 @@ public class PostResponse {
 
     @Builder.Default
     PostStats stats = new PostStats();
+
+    boolean likedByMe;
 
     Instant createdDate;
     Instant modifiedDate;

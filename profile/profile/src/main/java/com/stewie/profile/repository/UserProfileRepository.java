@@ -46,14 +46,23 @@ public interface UserProfileRepository extends Neo4jRepository<UserProfile, Stri
                     + "MERGE (to)-[:FOLLOWS]->(from)")
     void acceptFriendRequest(@Param("fromUserId") String fromUserId, @Param("toUserId") String toUserId);
 
-    @Query("MATCH (u1:user_profile {userId: $userId1})-[r:IS_FRIENDS_WITH]-(u2:user_profile {userId: $userId2}) "
-            + "DELETE r")
+    @Query(
+            "MATCH (u1:user_profile {userId: $userId1})-[r:IS_FRIENDS_WITH|FOLLOWS]-(u2:user_profile {userId: $userId2}) "
+                    + "DELETE r")
     void unfriend(@Param("userId1") String userId1, @Param("userId2") String userId2);
+
     // ── 5. TRUY VẤN DANH SÁCH ──
     // Lấy danh sách bạn bè của 1 user
     @Query("MATCH (u:user_profile {userId: $userId})-[:IS_FRIENDS_WITH]->(friend:user_profile) "
             + "RETURN friend SKIP $skip LIMIT $limit")
     List<UserProfile> findFriends(@Param("userId") String userId, @Param("skip") int skip, @Param("limit") int limit);
+
+    // Lấy danh sách userId mà user đang theo dõi hoặc kết bạn (phục vụ newsfeed)
+    @Query("MATCH (me:user_profile {userId: $userId})-[:FOLLOWS|IS_FRIENDS_WITH]->(u:user_profile) "
+            + "WHERE u.userId IS NOT NULL "
+            + "RETURN DISTINCT u.userId LIMIT $limit")
+    List<String> findFollowingUserIds(@Param("userId") String userId, @Param("limit") int limit);
+
     // Kiểm tra trạng thái quan hệ giữa currentUser và targetUser
     @Query("MATCH (me:user_profile {userId: $meId}), (target:user_profile {userId: $targetId}) " + "RETURN "
             + "EXISTS((me)-[:IS_FRIENDS_WITH]->(target)) AS isFriend, "

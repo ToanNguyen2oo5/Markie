@@ -31,13 +31,19 @@ public class Comment {
 
     private String userId;
 
-    //reply to another comment
+    // reply to another comment (max 2 levels)
     private String parentId;
 
     private String content;
 
     @Builder.Default
     private long likeCount = 0;
+
+    @Builder.Default
+    private long replyCount = 0;
+
+    @Builder.Default
+    private boolean edited = false;
 
     @CreatedDate
     private Instant createdAt;

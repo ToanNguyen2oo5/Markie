@@ -7,9 +7,9 @@ import { Header } from '../components/feed/Header';
 import { CreatePostCard } from '../components/feed/CreatePostCard';
 import { PostCard } from '../components/feed/PostCard';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
-import { ArrowClockwise, Article } from '@phosphor-icons/react';
+import { ArrowClockwise, Article, Users, Compass } from '@phosphor-icons/react';
 
-import type { PostData } from '../types/postTypes';
+import type { PostData, FeedTab } from '../types/postTypes';
 export type { PostData };
 
 const postContainerVariants = {
@@ -38,12 +38,14 @@ export function NewsFeedPage() {
   const { authenticated } = useAuth();
   const navigate = useNavigate();
 
+  const [tab, setTab] = useState<FeedTab>('following');
   const [posts, setPosts] = useState<PostData[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasNext, setHasNext] = useState(true);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const loadingRef = useRef(false);
+  const requestIdRef = useRef(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -54,54 +56,68 @@ export function NewsFeedPage() {
     }
   }, [authenticated, navigate]);
 
-  const fetchPosts = useCallback(async (currentCursor: string | null) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setLoading(true);
+  const fetchPosts = useCallback(
+    async (activeTab: FeedTab, currentCursor: string | null, force = false) => {
+      if (loadingRef.current && !force) return;
+      loadingRef.current = true;
+      setLoading(true);
+      const reqId = ++requestIdRef.current;
 
-    try {
-      await keycloak.updateToken(30);
-    } catch {
-      console.warn('Token refresh failed');
-    }
-
-    const params = new URLSearchParams({ limit: '5' });
-    if (currentCursor) params.set('cursor', currentCursor);
-
-    try {
-      const res = await fetch(`/post/my-posts?${params}`, {
-        headers: { Authorization: `Bearer ${keycloak.token}` },
-      });
-
-      if (!res.ok) {
-        console.error('Fetch posts failed with status:', res.status);
-        return;
+      try {
+        await keycloak.updateToken(30);
+      } catch {
+        console.warn('Token refresh failed');
       }
 
-      const data = await res.json();
-      if (data.code === 1000) {
-        const page = data.result;
-        setPosts((prev) => (currentCursor ? [...prev, ...page.data] : page.data));
-        setCursor(page.nextCursor ?? null);
-        setHasNext(page.hasNext);
-      } else {
-        console.error('Fetch posts error:', data.message);
-      }
-    } catch (err) {
-      console.error('Network error:', err);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  }, []);
+      const params = new URLSearchParams({ tab: activeTab, limit: '5' });
+      if (currentCursor) params.set('cursor', currentCursor);
 
-  // Initial load
+      try {
+        const res = await fetch(`/post/feed?${params}`, {
+          headers: { Authorization: `Bearer ${keycloak.token}` },
+        });
+
+        if (reqId !== requestIdRef.current) return;
+
+        if (!res.ok) {
+          console.error('Fetch posts failed with status:', res.status);
+          return;
+        }
+
+        const data = await res.json();
+        if (reqId !== requestIdRef.current) return;
+
+        if (data.code === 1000) {
+          const page = data.result;
+          setPosts((prev) => (currentCursor ? [...prev, ...page.data] : page.data));
+          setCursor(page.nextCursor ?? null);
+          setHasNext(page.hasNext);
+        } else {
+          console.error('Fetch posts error:', data.message);
+        }
+      } catch (err) {
+        console.error('Network error:', err);
+      } finally {
+        if (reqId === requestIdRef.current) {
+          loadingRef.current = false;
+          setLoading(false);
+          setInitialLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  // Initial load & reload on tab change
   useEffect(() => {
     if (authenticated) {
-      fetchPosts(null);
+      setPosts([]);
+      setCursor(null);
+      setHasNext(true);
+      setInitialLoading(true);
+      fetchPosts(tab, null, true);
     }
-  }, [authenticated, fetchPosts]);
+  }, [authenticated, tab, fetchPosts]);
 
   // Infinite scroll sentinel
   useEffect(() => {
@@ -109,7 +125,7 @@ export function NewsFeedPage() {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNext && !loadingRef.current) {
-          fetchPosts(cursor);
+          fetchPosts(tab, cursor);
         }
       },
       { threshold: 0.5 }
@@ -118,10 +134,14 @@ export function NewsFeedPage() {
       observerRef.current.observe(sentinelRef.current);
     }
     return () => observerRef.current?.disconnect();
-  }, [cursor, hasNext, fetchPosts]);
+  }, [tab, cursor, hasNext, fetchPosts]);
 
   const handlePostCreated = (newPost: PostData) => {
-    setPosts((prev) => [newPost, ...prev]);
+    if (tab === 'following') {
+      setPosts((prev) => [newPost, ...prev]);
+    } else {
+      setTab('following');
+    }
   };
 
   if (!authenticated) return null;
@@ -133,11 +153,41 @@ export function NewsFeedPage() {
       {/* ================= MAIN WORKSPACE (BẢNG TIN + CHAT SERVICE BÊN PHẢI) ================= */}
       <div className="flex-1 flex relative max-w-[1600px] w-full mx-auto pt-14">
         {/* KHU VỰC GIỮA: BẢNG TIN (FEED) */}
-        <main id="feed-container" className="flex-1 flex justify-center px-4 sm:px-6 pt-6 pb-24 transition-all duration-300">
+        <main
+          id="feed-container"
+          className="flex-1 flex justify-center px-4 sm:px-6 pt-6 pb-24 transition-all duration-300"
+        >
           <div className="w-full max-w-[640px] space-y-4">
-
             {/* Create Post Card */}
             <CreatePostCard onPostCreated={handlePostCreated} />
+
+            {/* Feed Mode Tabs */}
+            <div className="genv-card rounded-2xl p-1.5 border border-slate-200/90 dark:border-slate-800/80 grid grid-cols-2 gap-1.5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setTab('following')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-heading text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  tab === 'following'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Users className="w-4 h-4" weight={tab === 'following' ? 'fill' : 'regular'} />
+                <span>Đang theo dõi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('discover')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-heading text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  tab === 'discover'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Compass className="w-4 h-4" weight={tab === 'discover' ? 'fill' : 'regular'} />
+                <span>Khám phá</span>
+              </button>
+            </div>
 
             {/* Posts Feed */}
             {initialLoading ? (
@@ -151,12 +201,33 @@ export function NewsFeedPage() {
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-3">
                   <Article className="w-6 h-6" />
                 </div>
-                <h3 className="font-heading font-semibold text-slate-900 dark:text-slate-100 text-base">
-                  Chưa có bài viết nào
-                </h3>
-                <p className="font-sans text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm">
-                  Hãy là người đầu tiên chia sẻ góc nhìn hoặc bài viết của bạn với cộng đồng GenV.
-                </p>
+                {tab === 'following' ? (
+                  <>
+                    <h3 className="font-heading font-semibold text-slate-900 dark:text-slate-100 text-base">
+                      Chưa có bài viết trong bảng tin theo dõi
+                    </h3>
+                    <p className="font-sans text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm">
+                      Hãy đăng bài viết đầu tiên hoặc chuyển sang mục Khám phá để xem bài viết từ cộng đồng.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTab('discover')}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-heading text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      <Compass className="w-4 h-4" weight="fill" />
+                      <span>Khám phá ngay</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-heading font-semibold text-slate-900 dark:text-slate-100 text-base">
+                      Chưa có bài viết khám phá nào
+                    </h3>
+                    <p className="font-sans text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm">
+                      Hiện chưa có bài viết mới từ những người dùng khác trên hệ thống.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <motion.div
@@ -191,7 +262,6 @@ export function NewsFeedPage() {
                 </span>
               </div>
             )}
-
           </div>
         </main>
 

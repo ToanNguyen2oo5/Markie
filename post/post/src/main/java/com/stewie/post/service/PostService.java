@@ -10,6 +10,7 @@ import com.stewie.post.dto.response.CreateStatusResponse;
 import com.stewie.post.dto.response.PageResponse;
 import com.stewie.post.dto.response.PostResponse;
 import com.stewie.post.dto.response.ProfileResponse;
+import com.stewie.post.entity.LikeTargetType;
 import com.stewie.post.entity.Post;
 import com.stewie.post.entity.PostFile;
 import com.stewie.post.entity.PostStats;
@@ -18,6 +19,7 @@ import com.stewie.post.exception.AppException;
 import com.stewie.post.exception.ErrorCode;
 import com.stewie.post.mapper.PostMapper;
 import com.stewie.post.repository.PostRepository;
+import com.stewie.post.repository.StatsUpdater;
 import com.stewie.post.repository.httpclient.FileClient;
 import com.stewie.post.repository.httpclient.ProfileClient;
 import lombok.AccessLevel;
@@ -25,13 +27,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +45,8 @@ import java.util.*;
 @Slf4j
 public class PostService {
     PostRepository postRepository;
+    StatsUpdater statsUpdater;
+    LikeService likeService;
     ProfileClient profileClient;
     FileClient fileClient;
     PostMapper postMapper;
@@ -85,8 +93,10 @@ public class PostService {
             }
         }
 
-        // Lấy username từ profile service để gửi kèm event
-        String username = fetchUsername(userId);
+        // Lấy profile từ profile service để gửi kèm event và trả về
+        ProfileResponse authorProfile = fetchProfile(userId);
+        String username = authorProfile != null ? authorProfile.getUsername() : null;
+        String avatar = authorProfile != null ? authorProfile.getAvatar() : null;
 
         // Case A: Text-only post (no files to claim)
         if (!hasFiles) {
@@ -107,6 +117,7 @@ public class PostService {
 
             var response = postMapper.toPostResponse(post);
             response.setUsername(username);
+            response.setAvatar(avatar);
             return response;
         }
 
@@ -187,6 +198,7 @@ public class PostService {
 
         var response = postMapper.toPostResponse(post);
         response.setUsername(username);
+        response.setAvatar(avatar);
         return response;
     }
 
@@ -204,22 +216,105 @@ public class PostService {
 
     public PageResponse<PostResponse> getMyPosts(String cursor, int limit) {
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        String username = fetchUsername(userId);
+        int safeLimit = Math.max(1, Math.min(20, limit));
 
         Slice<Post> postSlice;
         if (cursor == null || cursor.isEmpty()) {
-            postSlice = postRepository.findPublishedByUserIdOrderByIdDesc(userId, PageRequest.of(0, limit));
+            postSlice = postRepository.findPublishedByUserIdOrderByIdDesc(userId, PageRequest.of(0, safeLimit));
         } else {
-            postSlice = postRepository.findPublishedByIdLessThanAndUserIdOrderByIdDesc(cursor, userId, PageRequest.of(0, limit));
+            postSlice = postRepository.findPublishedByIdLessThanAndUserIdOrderByIdDesc(cursor, userId, PageRequest.of(0, safeLimit));
         }
 
+        return enrichPage(postSlice, userId);
+    }
+
+    public PageResponse<PostResponse> getFeed(String tab, String cursor, int limit) {
+        var userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        int safeLimit = Math.max(1, Math.min(20, limit));
+        Pageable pageable = PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "id"));
+
+        Slice<Post> postSlice;
+        if ("discover".equalsIgnoreCase(tab)) {
+            if (cursor == null || cursor.isEmpty()) {
+                postSlice = postRepository.findPublishedDiscover(userId, pageable);
+            } else {
+                postSlice = postRepository.findPublishedDiscoverBefore(cursor, userId, pageable);
+            }
+        } else {
+            Set<String> authorIds = new LinkedHashSet<>();
+            authorIds.add(userId);
+            authorIds.addAll(fetchFollowingIds(userId));
+
+            if (cursor == null || cursor.isEmpty()) {
+                postSlice = postRepository.findPublishedByUserIdIn(authorIds, pageable);
+            } else {
+                postSlice = postRepository.findPublishedByIdLessThanAndUserIdIn(cursor, authorIds, pageable);
+            }
+        }
+
+        return enrichPage(postSlice, userId);
+    }
+
+    public PostResponse getPostById(String postId) {
+        var currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+
+        if (post.getStatus() != null && post.getStatus() != PostStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.POST_NOT_EXISTED);
+        }
+
+        ProfileResponse profile = fetchProfile(post.getUserId());
+        var postResponse = postMapper.toPostResponse(post);
+        if (profile != null) {
+            postResponse.setUsername(profile.getUsername());
+            postResponse.setAvatar(profile.getAvatar());
+        }
+        if (likeService != null) {
+            boolean liked = likeService.getLikedTargetIds(currentUserId, LikeTargetType.POST, List.of(postId))
+                    .contains(postId);
+            postResponse.setLikedByMe(liked);
+        }
+        return postResponse;
+    }
+
+    public long sharePost(String postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
+
+        if (post.getStatus() != null && post.getStatus() != PostStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.POST_NOT_EXISTED);
+        }
+
+        statsUpdater.incPost(postId, "stats.shareCount", 1);
+        long currentShares = post.getStats() != null ? post.getStats().getShareCount() : 0L;
+        return currentShares + 1;
+    }
+
+    private PageResponse<PostResponse> enrichPage(Slice<Post> postSlice, String currentUserId) {
         List<Post> posts = postSlice.getContent();
         String nextCursor = posts.isEmpty() ? null : posts.get(posts.size() - 1).getId();
+
+        Set<String> authorIds = posts.stream()
+                .map(Post::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<String, ProfileResponse> profileMap = fetchProfileMap(authorIds);
+
+        List<String> postIds = posts.stream().map(Post::getId).toList();
+        Set<String> likedPostIds = likeService != null
+                ? likeService.getLikedTargetIds(currentUserId, LikeTargetType.POST, postIds)
+                : Collections.emptySet();
 
         List<PostResponse> postResponses = posts.stream()
                 .map(post -> {
                     var postResponse = postMapper.toPostResponse(post);
-                    postResponse.setUsername(username);
+                    ProfileResponse profile = profileMap.get(post.getUserId());
+                    if (profile != null) {
+                        postResponse.setUsername(profile.getUsername());
+                        postResponse.setAvatar(profile.getAvatar());
+                    }
+                    postResponse.setLikedByMe(likedPostIds.contains(post.getId()));
                     return postResponse;
                 })
                 .toList();
@@ -231,30 +326,43 @@ public class PostService {
                 .build();
     }
 
-    public PostResponse getPostById(String postId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new AppException(ErrorCode.POST_NOT_EXISTED));
-
-        if (post.getStatus() != null && post.getStatus() != PostStatus.PUBLISHED) {
-            throw new AppException(ErrorCode.POST_NOT_EXISTED);
-        }
-
-        String username = fetchUsername(post.getUserId());
-        var postResponse = postMapper.toPostResponse(post);
-        postResponse.setUsername(username);
-        return postResponse;
-    }
-
-    private String fetchUsername(String userId) {
+    private List<String> fetchFollowingIds(String userId) {
         try {
-            ProfileResponse profile = profileClient.getProfileByUserId(userId).getResult();
-            if (profile != null) {
-                return profile.getUsername();
+            var res = profileClient.getFollowingIds(userId);
+            if (res != null && res.getResult() != null) {
+                return res.getResult();
             }
         } catch (Exception e) {
-            log.warn("Could not fetch username for userId: {}", userId, e);
+            log.warn("Could not fetch followingIds for userId: {}, falling back to self posts only", userId, e);
         }
-        return null;
+        return Collections.emptyList();
+    }
+
+    private Map<String, ProfileResponse> fetchProfileMap(Set<String> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            var res = profileClient.getProfilesByUserIds(List.copyOf(userIds));
+            List<ProfileResponse> profiles = res != null ? res.getResult() : null;
+            if (profiles == null) return Map.of();
+            return profiles.stream()
+                    .filter(p -> p.getUserId() != null)
+                    .collect(Collectors.toMap(ProfileResponse::getUserId, Function.identity(), (a, b) -> a));
+        } catch (Exception e) {
+            log.warn("Could not batch fetch profiles for userIds: {}", userIds, e);
+            return Map.of();
+        }
+    }
+
+    private ProfileResponse fetchProfile(String userId) {
+        try {
+            var res = profileClient.getProfileByUserId(userId);
+            return res != null ? res.getResult() : null;
+        } catch (Exception e) {
+            log.warn("Could not fetch profile for userId: {}", userId, e);
+            return null;
+        }
     }
 
     private void sendPostSyncEvent(Post post, String username) {

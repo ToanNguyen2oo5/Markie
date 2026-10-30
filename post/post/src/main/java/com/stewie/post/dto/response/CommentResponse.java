@@ -22,6 +22,9 @@ public class CommentResponse {
     String parentId;
     String content;
     long likeCount;
+    long replyCount;
+    boolean likedByMe;
+    boolean edited;
     Instant createdAt;
     Instant updatedAt;
 }

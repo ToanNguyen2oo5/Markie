@@ -3,9 +3,11 @@ package com.stewie.post.service;
 import com.stewie.post.dto.ApiResponse;
 import com.stewie.post.dto.request.PostRequest;
 import com.stewie.post.dto.request.internal.ClaimAttachmentRequest;
+import com.stewie.post.dto.response.PageResponse;
 import com.stewie.post.dto.response.PostResponse;
 import com.stewie.post.dto.response.ProfileResponse;
 import com.stewie.post.dto.response.internal.PostFileDto;
+import com.stewie.post.entity.LikeTargetType;
 import com.stewie.post.entity.Post;
 import com.stewie.post.entity.PostFile;
 import com.stewie.post.entity.PostStatus;
@@ -13,22 +15,27 @@ import com.stewie.post.exception.AppException;
 import com.stewie.post.exception.ErrorCode;
 import com.stewie.post.mapper.PostMapper;
 import com.stewie.post.repository.PostRepository;
+import com.stewie.post.repository.StatsUpdater;
 import com.stewie.post.repository.httpclient.FileClient;
 import com.stewie.post.repository.httpclient.ProfileClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +46,12 @@ class PostServiceTest {
 
     @Mock
     private PostRepository postRepository;
+
+    @Mock
+    private StatsUpdater statsUpdater;
+
+    @Mock
+    private LikeService likeService;
 
     @Mock
     private ProfileClient profileClient;
@@ -63,8 +76,8 @@ class PostServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getName()).thenReturn("user-123");
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getName()).thenReturn("user-123");
         SecurityContextHolder.setContext(securityContext);
     }
 
@@ -227,5 +240,72 @@ class PostServiceTest {
         assertEquals(ErrorCode.FILE_ATTACHMENT_FAILED, ex.getErrorCode());
 
         verify(fileClient).releasePostAttachments(any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGetFollowingFeedCombinesSelfAndFollowingAndBatchEnriches() {
+        when(profileClient.getFollowingIds("user-123"))
+                .thenReturn(ApiResponse.<List<String>>builder().result(List.of("friend-1", "friend-2")).build());
+
+        Post p1 = Post.builder().id("p-2").userId("friend-1").content("Friend post").build();
+        Post p2 = Post.builder().id("p-1").userId("user-123").content("My post").build();
+
+        when(postRepository.findPublishedByUserIdIn(any(), any()))
+                .thenReturn(new SliceImpl<>(List.of(p1, p2)));
+
+        when(postMapper.toPostResponse(p1)).thenReturn(PostResponse.builder().id("p-2").userId("friend-1").build());
+        when(postMapper.toPostResponse(p2)).thenReturn(PostResponse.builder().id("p-1").userId("user-123").build());
+
+        when(profileClient.getProfilesByUserIds(any())).thenReturn(ApiResponse.<List<ProfileResponse>>builder()
+                .result(List.of(
+                        ProfileResponse.builder().userId("friend-1").username("alice").avatar("av-1").build(),
+                        ProfileResponse.builder().userId("user-123").username("me").avatar("av-me").build()
+                ))
+                .build());
+
+        when(likeService.getLikedTargetIds(eq("user-123"), eq(LikeTargetType.POST), any()))
+                .thenReturn(Set.of("p-2"));
+
+        PageResponse<PostResponse> page = postService.getFeed("following", null, 5);
+
+        ArgumentCaptor<Collection<String>> authorsCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(postRepository).findPublishedByUserIdIn(authorsCaptor.capture(), any());
+        assertTrue(authorsCaptor.getValue().containsAll(List.of("user-123", "friend-1", "friend-2")));
+
+        verify(profileClient, times(1)).getProfilesByUserIds(any());
+        assertEquals(2, page.getData().size());
+        assertEquals("alice", page.getData().get(0).getUsername());
+        assertEquals("av-1", page.getData().get(0).getAvatar());
+        assertTrue(page.getData().get(0).isLikedByMe());
+        assertFalse(page.getData().get(1).isLikedByMe());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGetFollowingFeedFallsBackToSelfWhenProfileServiceFails() {
+        when(profileClient.getFollowingIds("user-123")).thenThrow(new RuntimeException("profile service down"));
+        when(postRepository.findPublishedByUserIdIn(any(), any()))
+                .thenReturn(new SliceImpl<>(List.of()));
+
+        PageResponse<PostResponse> page = postService.getFeed("following", null, 5);
+
+        ArgumentCaptor<Collection<String>> authorsCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(postRepository).findPublishedByUserIdIn(authorsCaptor.capture(), any());
+        assertEquals(Set.of("user-123"), Set.copyOf(authorsCaptor.getValue()));
+        assertTrue(page.getData().isEmpty());
+    }
+
+    @Test
+    void testGetDiscoverFeedQueriesExcludingCurrentUser() {
+        Post p1 = Post.builder().id("p-9").userId("stranger-1").content("Hello").build();
+        when(postRepository.findPublishedDiscover(eq("user-123"), any()))
+                .thenReturn(new SliceImpl<>(List.of(p1)));
+        when(postMapper.toPostResponse(p1)).thenReturn(PostResponse.builder().id("p-9").userId("stranger-1").build());
+
+        PageResponse<PostResponse> page = postService.getFeed("discover", null, 5);
+
+        verify(postRepository).findPublishedDiscover(eq("user-123"), any());
+        assertEquals(1, page.getData().size());
     }
 }

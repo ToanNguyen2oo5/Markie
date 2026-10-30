@@ -1,5 +1,7 @@
-import { useState, memo, useMemo } from 'react';
+import { useState, memo, useMemo, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  Heart,
   ChatCircle,
   Copy,
   Check,
@@ -14,10 +16,14 @@ import {
 } from '@phosphor-icons/react';
 import type { PostData, PostFile } from '../../types/postTypes';
 import { CommentModal } from './CommentModal';
+import { LikersModal } from './LikersModal';
 import { ImageLightbox } from './ImageLightbox';
 import { useProfile } from '../../context/ProfileContext';
 import { useChat } from '../../context/ChatContext';
+import { useToast } from '../../context/ToastContext';
 import { formatFileSize } from '../../services/fileApi';
+import { likePost, unlikePost, sharePost } from '../../services/postInteractionApi';
+import { useOptimisticLike } from '../../hooks/useOptimisticLike';
 
 interface PostCardProps {
   post: PostData;
@@ -77,15 +83,49 @@ function getDocumentIcon(filename: string) {
 export const PostCard = memo(function PostCard({ post }: PostCardProps) {
   const { profile, avatarUrl: myAvatarUrl } = useProfile();
   const { openChat } = useChat();
+  const toast = useToast();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [isLikersModalOpen, setIsLikersModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  const [commentCount, setCommentCount] = useState<number>(post.stats?.commentCount ?? 0);
+  const [shareCount, setShareCount] = useState<number>(post.stats?.shareCount ?? 0);
+
+  useEffect(() => {
+    setCommentCount(post.stats?.commentCount ?? 0);
+  }, [post.stats?.commentCount]);
+
+  useEffect(() => {
+    setShareCount(post.stats?.shareCount ?? 0);
+  }, [post.stats?.shareCount]);
+
+  const {
+    liked,
+    count: likeCount,
+    toggle: toggleLike,
+  } = useOptimisticLike({
+    initialLiked: Boolean(post.likedByMe),
+    initialCount: post.stats?.likeCount ?? 0,
+    onLike: useCallback(() => likePost(post.id), [post.id]),
+    onUnlike: useCallback(() => unlikePost(post.id), [post.id]),
+    onError: useCallback((err: Error) => toast.error(err.message), [toast]),
+  });
+
+  const handleCommentCountChange = useCallback((delta: number) => {
+    setCommentCount((prev) => Math.max(0, prev + delta));
+  }, []);
+
   const isMyPost = profile?.userId === post.userId;
-  const postAvatarUrl = isMyPost ? myAvatarUrl : getAvatarUrl(post.userId);
+  const postAvatarUrl = isMyPost
+    ? myAvatarUrl
+    : post.avatar || getAvatarUrl(post.userId);
   const displayName = post.username ?? 'Người dùng';
   const timeAgo = formatTime(post.createdDate);
+  const authorProfilePath = isMyPost
+    ? '/profile'
+    : `/profile/${encodeURIComponent(post.userId)}`;
 
   const { images, documents } = useMemo(() => {
     const imgs: PostFile[] = [];
@@ -108,6 +148,9 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
       await navigator.clipboard.writeText(postUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      sharePost(post.id)
+        .then((res) => setShareCount(res.shareCount))
+        .catch(() => setShareCount((prev) => prev + 1));
     } catch {
       setCopied(false);
     }
@@ -118,6 +161,8 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
     setLightboxOpen(true);
   };
 
+  const hasAnyStats = likeCount > 0 || commentCount > 0 || shareCount > 0;
+
   return (
     <>
       <article
@@ -127,15 +172,20 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={postAvatarUrl}
-              alt={displayName}
-              className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800"
-            />
+            <Link to={authorProfilePath} className="flex-shrink-0 group">
+              <img
+                src={postAvatarUrl}
+                alt={displayName}
+                className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-800 group-hover:ring-2 group-hover:ring-indigo-500/40 transition-all"
+              />
+            </Link>
             <div className="flex flex-col">
-              <h4 className="font-heading text-slate-900 dark:text-slate-100 font-semibold text-[15px] leading-snug">
+              <Link
+                to={authorProfilePath}
+                className="font-heading text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 font-semibold text-[15px] leading-snug transition-colors w-fit"
+              >
                 {displayName}
-              </h4>
+              </Link>
               <span className="font-code text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {timeAgo}
               </span>
@@ -157,7 +207,7 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                <span className="hidden sm:inline font-heading text-slate-600 dark:text-slate-400">Liên kết</span>
+                <span className="hidden sm:inline font-heading text-slate-600 dark:text-slate-400">Chia sẻ</span>
               </>
             )}
           </button>
@@ -315,9 +365,56 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
           </div>
         )}
 
-        {/* Divider */}
+        {/* Stats Summary Row */}
+        {hasAnyStats && (
+          <div className="flex items-center justify-between pt-3 text-xs text-slate-500 dark:text-slate-400">
+            <div>
+              {likeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsLikersModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 hover:text-rose-600 dark:hover:text-rose-400 hover:underline cursor-pointer"
+                >
+                  <Heart className="w-3.5 h-3.5 text-rose-500" weight="fill" />
+                  <span>{likeCount} lượt thích</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {commentCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsCommentModalOpen(true)}
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline cursor-pointer"
+                >
+                  {commentCount} bình luận
+                </button>
+              )}
+              {shareCount > 0 && <span>{shareCount} chia sẻ</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Divider & Actions */}
         <div className="border-t border-slate-100 dark:border-slate-800/80 mt-3 pt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Like Action Button */}
+            <button
+              type="button"
+              onClick={toggleLike}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all text-xs font-heading font-medium cursor-pointer active:scale-95 ${
+                liked
+                  ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/25'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20'
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 ${liked ? 'text-rose-600 dark:text-rose-400' : 'text-rose-500'}`}
+                weight={liked ? 'fill' : 'regular'}
+              />
+              <span>{liked ? 'Đã thích' : 'Thích'}</span>
+            </button>
+
             {/* Comment Action Button */}
             <button
               type="button"
@@ -337,7 +434,7 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
                   openChat(targetId, {
                     name: post.username ? `@${post.username}` : 'Tác giả',
                     role: post.username ? `@${post.username}` : 'Người dùng',
-                    avatar: `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(targetId)}&size=80`,
+                    avatar: postAvatarUrl,
                   });
                 }
               }}
@@ -355,10 +452,17 @@ export const PostCard = memo(function PostCard({ post }: PostCardProps) {
 
         {/* Comment Modal */}
         {isCommentModalOpen && (
-          <CommentModal 
-            postId={post.id} 
-            onClose={() => setIsCommentModalOpen(false)} 
+          <CommentModal
+            postId={post.id}
+            postOwnerId={post.userId}
+            onCommentCountChange={handleCommentCountChange}
+            onClose={() => setIsCommentModalOpen(false)}
           />
+        )}
+
+        {/* Likers Modal */}
+        {isLikersModalOpen && (
+          <LikersModal postId={post.id} onClose={() => setIsLikersModalOpen(false)} />
         )}
       </article>
 

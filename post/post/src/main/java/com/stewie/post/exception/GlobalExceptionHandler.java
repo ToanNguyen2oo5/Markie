@@ -1,7 +1,5 @@
 package com.stewie.post.exception;
 
-
-
 import com.stewie.post.dto.ApiResponse;
 import jakarta.validation.ConstraintViolation;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +18,7 @@ public class GlobalExceptionHandler {
     private static final String MIN_ATTRIBUTE = "min";
 
     @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ApiResponse> handlingRuntimeException(RuntimeException exception) {
+    ResponseEntity<ApiResponse> handlingException(Exception exception) {
         log.error("Exception: ", exception);
         ApiResponse apiResponse = new ApiResponse();
 
@@ -40,17 +38,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
     }
-
-    //    @ExceptionHandler(value = AccessDeniedException.class)
-    //    ResponseEntity<ApiResponse> handlingAccessDeniedException(AccessDeniedException exception) {
-    //        ErrorCode errorCode = ErrorCode.UNAUTHORIZED;
-    //
-    //        return ResponseEntity.status(errorCode.getStatusCode())
-    //                .body(ApiResponse.builder()
-    //                        .code(errorCode.getCode())
-    //                        .message(errorCode.getMessage())
-    //                        .build());
-    //    }
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {

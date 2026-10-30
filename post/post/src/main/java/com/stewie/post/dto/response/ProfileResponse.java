@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class ProfileResponse {
     String profileId;
     String userId;
+    String avatar;
     String email;
     String username;
     String firstName;
