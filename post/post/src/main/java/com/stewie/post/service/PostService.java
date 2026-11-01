@@ -29,10 +29,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.*;
@@ -276,6 +279,20 @@ public class PostService {
             postResponse.setLikedByMe(liked);
         }
         return postResponse;
+    }
+
+    public List<PostResponse> getPostsByIds(List<String> postIds) {
+        if (postIds == null || postIds.size() > 20 ||
+                postIds.stream().anyMatch(id -> id == null || id.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide at most 20 valid post IDs");
+        }
+        if (postIds.isEmpty()) return List.of();
+
+        String currentUserId = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<Post> posts = postRepository.findAllById(postIds).stream()
+                .filter(post -> post.getStatus() == null || post.getStatus() == PostStatus.PUBLISHED)
+                .toList();
+        return enrichPage(new SliceImpl<>(posts), currentUserId).getData();
     }
 
     public long sharePost(String postId) {
