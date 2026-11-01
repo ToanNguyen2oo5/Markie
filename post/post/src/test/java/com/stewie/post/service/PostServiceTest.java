@@ -11,6 +11,7 @@ import com.stewie.post.entity.LikeTargetType;
 import com.stewie.post.entity.Post;
 import com.stewie.post.entity.PostFile;
 import com.stewie.post.entity.PostStatus;
+import com.stewie.post.entity.PostStats;
 import com.stewie.post.exception.AppException;
 import com.stewie.post.exception.ErrorCode;
 import com.stewie.post.mapper.PostMapper;
@@ -307,5 +308,43 @@ class PostServiceTest {
 
         verify(postRepository).findPublishedDiscover(eq("user-123"), any());
         assertEquals(1, page.getData().size());
+    }
+
+    @Test
+    void testBatchPostsReturnsCurrentStatsAndAuthorAvatarWithoutUnpublishedPosts() {
+        Post published = Post.builder().id("p-1").userId("author-1")
+                .status(PostStatus.PUBLISHED).build();
+        Post unpublished = Post.builder().id("p-2").userId("author-1")
+                .status(PostStatus.PENDING_ATTACHMENTS).build();
+        PostStats stats = new PostStats();
+        stats.setLikeCount(7);
+        stats.setCommentCount(3);
+        published.setStats(stats);
+        when(postRepository.findAllById(List.of("p-1", "p-2", "deleted")))
+                .thenReturn(List.of(published, unpublished));
+        when(postMapper.toPostResponse(published)).thenReturn(PostResponse.builder()
+                .id("p-1").userId("author-1").stats(stats).build());
+        when(profileClient.getProfilesByUserIds(List.of("author-1")))
+                .thenReturn(ApiResponse.<List<ProfileResponse>>builder().result(List.of(
+                        ProfileResponse.builder().userId("author-1").username("alice")
+                                .avatar("http://localhost:8888/file/media/preview/avatar").build()
+                )).build());
+
+        List<PostResponse> result = postService.getPostsByIds(List.of("p-1", "p-2", "deleted"));
+
+        assertEquals(1, result.size());
+        assertEquals(7, result.getFirst().getStats().getLikeCount());
+        assertEquals(3, result.getFirst().getStats().getCommentCount());
+        assertEquals("alice", result.getFirst().getUsername());
+        assertEquals("http://localhost:8888/file/media/preview/avatar", result.getFirst().getAvatar());
+        verify(postMapper, never()).toPostResponse(unpublished);
+    }
+
+    @Test
+    void testBatchPostsRejectsOversizedRequestAndHandlesEmptyResults() {
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> postService.getPostsByIds(java.util.Collections.nCopies(21, "p-1")));
+        assertTrue(postService.getPostsByIds(List.of()).isEmpty());
+        verifyNoInteractions(postRepository, profileClient);
     }
 }

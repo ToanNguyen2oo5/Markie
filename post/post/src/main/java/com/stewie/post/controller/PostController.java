@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,6 +53,13 @@ public class PostController {
     ApiResponse<PostResponse> getPostById(@PathVariable String postId){
         return ApiResponse.<PostResponse>builder()
                 .result(postService.getPostById(postId))
+                .build();
+    }
+
+    @PostMapping("/posts/batch")
+    ApiResponse<List<PostResponse>> getPostsByIds(@RequestBody List<String> postIds) {
+        return ApiResponse.<List<PostResponse>>builder()
+                .result(postService.getPostsByIds(postIds))
                 .build();
     }
 

@@ -28,7 +28,8 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true,
       },
-      '/search': {
+      // Keep the /search page on Vite; only forward search API requests.
+      '/search/': {
         target: 'http://localhost:8888',
         changeOrigin: true,
       },
