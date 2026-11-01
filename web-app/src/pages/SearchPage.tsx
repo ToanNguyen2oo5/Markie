@@ -6,6 +6,7 @@ import { Header } from '../components/feed/Header';
 import { SearchPostCard } from '../components/search/SearchPostCard';
 import { SearchUserCard } from '../components/search/SearchUserCard';
 import keycloak from '../keycloak';
+import type { PostData } from '../types/postTypes';
 import type {
   SearchPostResult,
   SearchUserResult,
@@ -18,18 +19,18 @@ import type {
 
 function PostSkeleton() {
   return (
-    <div className="w-full bg-[#242526] rounded-xl p-4 border border-[#393A3B]/30 animate-pulse">
+    <div className="w-full bg-white dark:bg-[#242526] rounded-xl p-4 border border-slate-200 dark:border-[#393A3B]/30 animate-pulse">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full bg-[#3A3B3C] flex-shrink-0" />
+        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-[#3A3B3C] flex-shrink-0" />
         <div className="flex flex-col gap-2 flex-1">
-          <div className="h-3 w-28 bg-[#3A3B3C] rounded-full" />
-          <div className="h-2 w-20 bg-[#3A3B3C] rounded-full" />
+          <div className="h-3 w-28 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
+          <div className="h-2 w-20 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
         </div>
       </div>
       <div className="space-y-2">
-        <div className="h-3 bg-[#3A3B3C] rounded-full" />
-        <div className="h-3 bg-[#3A3B3C] rounded-full w-4/5" />
-        <div className="h-3 bg-[#3A3B3C] rounded-full w-3/5" />
+        <div className="h-3 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
+        <div className="h-3 bg-slate-200 dark:bg-[#3A3B3C] rounded-full w-4/5" />
+        <div className="h-3 bg-slate-200 dark:bg-[#3A3B3C] rounded-full w-3/5" />
       </div>
     </div>
   );
@@ -37,14 +38,14 @@ function PostSkeleton() {
 
 function UserSkeleton() {
   return (
-    <div className="w-full bg-[#242526] rounded-xl p-4 border border-[#393A3B]/30 animate-pulse flex items-center gap-4">
-      <div className="w-16 h-16 rounded-full bg-[#3A3B3C] flex-shrink-0" />
+    <div className="w-full bg-white dark:bg-[#242526] rounded-xl p-4 border border-slate-200 dark:border-[#393A3B]/30 animate-pulse flex items-center gap-4">
+      <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-[#3A3B3C] flex-shrink-0" />
       <div className="flex-1 space-y-2">
-        <div className="h-3.5 w-32 bg-[#3A3B3C] rounded-full" />
-        <div className="h-3 w-24 bg-[#3A3B3C] rounded-full" />
-        <div className="h-2.5 w-40 bg-[#3A3B3C] rounded-full" />
+        <div className="h-3.5 w-32 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
+        <div className="h-3 w-24 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
+        <div className="h-2.5 w-40 bg-slate-200 dark:bg-[#3A3B3C] rounded-full" />
       </div>
-      <div className="w-20 h-8 bg-[#3A3B3C] rounded-lg flex-shrink-0" />
+      <div className="w-20 h-8 bg-slate-200 dark:bg-[#3A3B3C] rounded-lg flex-shrink-0" />
     </div>
   );
 }
@@ -54,13 +55,13 @@ function UserSkeleton() {
 function EmptyState({ keyword }: { keyword: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-full bg-[#3A3B3C] flex items-center justify-center mb-4">
-        <MagnifyingGlass className="w-8 h-8 text-[#B0B3B8]" />
+      <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-[#3A3B3C] flex items-center justify-center mb-4">
+        <MagnifyingGlass className="w-8 h-8 text-slate-500 dark:text-[#B0B3B8]" />
       </div>
-      <p className="text-[#E4E6EB] font-semibold text-lg">
+      <p className="text-slate-900 dark:text-[#E4E6EB] font-semibold text-lg">
         Không có kết quả cho "{keyword}"
       </p>
-      <p className="text-[#B0B3B8] text-sm mt-1">
+      <p className="text-slate-500 dark:text-[#B0B3B8] text-sm mt-1">
         Hãy thử từ khóa khác hoặc kiểm tra lại chính tả.
       </p>
     </div>
@@ -84,7 +85,7 @@ function FilterTab({ active, icon, label, count, onClick }: FilterTabProps) {
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[15px] font-medium transition-all duration-150 cursor-pointer ${
         active
           ? 'bg-[#0866FF]/15 text-[#0866FF]'
-          : 'text-[#B0B3B8] hover:bg-[#3A3B3C] hover:text-[#E4E6EB]'
+          : 'text-slate-500 dark:text-[#B0B3B8] hover:bg-slate-200 dark:hover:bg-[#3A3B3C] hover:text-slate-900 dark:hover:text-[#E4E6EB]'
       }`}
     >
       <span className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#0866FF]' : ''}`}>{icon}</span>
@@ -92,7 +93,7 @@ function FilterTab({ active, icon, label, count, onClick }: FilterTabProps) {
       {count !== undefined && count > 0 && (
         <span
           className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
-            active ? 'bg-[#0866FF]/20 text-[#0866FF]' : 'bg-[#3A3B3C] text-[#B0B3B8]'
+            active ? 'bg-[#0866FF]/20 text-[#0866FF]' : 'bg-slate-200 dark:bg-[#3A3B3C] text-slate-500 dark:text-[#B0B3B8]'
           }`}
         >
           {count > 999 ? '999+' : count}
@@ -107,8 +108,8 @@ function FilterTab({ active, icon, label, count, onClick }: FilterTabProps) {
 function SectionHeader({ title, total }: { title: string; total: number }) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h2 className="text-[#E4E6EB] font-bold text-lg">{title}</h2>
-      <span className="text-[#B0B3B8] text-sm">{total} kết quả</span>
+      <h2 className="text-slate-900 dark:text-[#E4E6EB] font-bold text-lg">{title}</h2>
+      <span className="text-slate-500 dark:text-[#B0B3B8] text-sm">{total} kết quả</span>
     </div>
   );
 }
@@ -120,7 +121,7 @@ function LoadMoreButton({ onClick, loading }: { onClick: () => void; loading: bo
     <button
       onClick={onClick}
       disabled={loading}
-      className="w-full py-3 rounded-xl bg-[#3A3B3C] hover:bg-[#4E4F50] text-[#E4E6EB] font-medium text-[15px] transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-3 rounded-xl bg-slate-200 dark:bg-[#3A3B3C] hover:bg-slate-300 dark:hover:bg-[#4E4F50] text-slate-900 dark:text-[#E4E6EB] font-medium text-[15px] transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? (
         <ArrowClockwise className="w-5 h-5 animate-spin" />
@@ -192,7 +193,40 @@ export function SearchPage() {
       if (!res.ok) return;
       const data: SearchApiResponse<SearchPostResult> = await res.json();
       if (data.code === 1000) {
-        setPosts((prev) => (append ? [...prev, ...data.result.items] : data.result.items));
+        let items = data.result.items.map((post) => ({
+          ...post,
+          // Search indexes may contain old counts; unavailable data must not look like zero.
+          likeCount: null as number | null,
+          commentCount: null as number | null,
+        }));
+        if (items.length) {
+          try {
+            const detailsRes = await fetch('/post/posts/batch', {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify(items.map((post) => post.id)),
+            });
+            if (!detailsRes.ok) throw new Error('Could not load current post details');
+            const details: { code: number; result: PostData[] } = await detailsRes.json();
+            if (details.code !== 1000) throw new Error('Could not load current post details');
+            const byId = new Map(details.result.map((post) => [post.id, post]));
+            items = items.filter((post) => byId.has(post.id)).map((post) => {
+              const current = byId.get(post.id)!;
+              return {
+                ...post,
+                username: current.username ?? post.username,
+                avatar: current.avatar,
+                files: current.files,
+                content: current.content,
+                likeCount: current.stats?.likeCount ?? null,
+                commentCount: current.stats?.commentCount ?? null,
+              };
+            });
+          } catch (error) {
+            console.error('Search post details error:', error);
+          }
+        }
+        setPosts((prev) => (append ? [...prev, ...items] : items));
         setPostsMeta(data.result);
       }
     } catch (err) {
@@ -303,14 +337,14 @@ export function SearchPage() {
   if (!authenticated) return null;
 
   return (
-    <div className="min-h-screen bg-[#18191A] text-[#E4E6EB] flex flex-col">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#18191A] text-slate-900 dark:text-[#E4E6EB] flex flex-col">
       <Header />
 
       <div className="flex flex-1 pt-14 max-w-[1200px] mx-auto w-full px-4 gap-4">
         {/* ── Left Sidebar: Filters ───────────────────────────────────────────── */}
         <aside className="hidden md:flex flex-col w-[260px] flex-shrink-0 pt-6">
-          <div className="bg-[#242526] rounded-xl border border-[#393A3B]/30 p-3 sticky top-[80px]">
-            <h3 className="text-[#E4E6EB] font-bold text-[18px] px-2 mb-3">Kết quả tìm kiếm</h3>
+          <div className="bg-white dark:bg-[#242526] rounded-xl border border-slate-200 dark:border-[#393A3B]/30 p-3 sticky top-[80px]">
+            <h3 className="text-slate-900 dark:text-[#E4E6EB] font-bold text-[18px] px-2 mb-3">Kết quả tìm kiếm</h3>
             <div className="flex flex-col gap-1">
               <FilterTab
                 active={filter === 'all'}
@@ -340,7 +374,7 @@ export function SearchPage() {
         <main className="flex-1 pt-6 pb-12 min-w-0">
           {/* Search input on page */}
           <div className="relative mb-6">
-            <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B0B3B8] w-5 h-5 pointer-events-none" />
+            <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-[#B0B3B8] w-5 h-5 pointer-events-none" />
             <input
               id="search-page-input"
               type="text"
@@ -349,7 +383,7 @@ export function SearchPage() {
               onKeyDown={handleInputKeyDown}
               placeholder="Nhập từ khóa tìm kiếm..."
               autoFocus
-              className="w-full bg-[#3A3B3C] text-[#E4E6EB] placeholder-[#B0B3B8] h-12 rounded-xl pl-11 pr-4 outline-none focus:ring-2 focus:ring-[#0866FF]/50 transition-all text-[15px]"
+              className="w-full bg-slate-200 dark:bg-[#3A3B3C] text-slate-900 dark:text-[#E4E6EB] placeholder-slate-500 dark:placeholder-[#B0B3B8] h-12 rounded-xl pl-11 pr-4 outline-none focus:ring-2 focus:ring-[#0866FF]/50 transition-all text-[15px]"
             />
           </div>
 
@@ -368,7 +402,7 @@ export function SearchPage() {
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
                   filter === key
                     ? 'bg-[#0866FF] text-white'
-                    : 'bg-[#3A3B3C] text-[#B0B3B8] hover:text-[#E4E6EB]'
+                    : 'bg-slate-200 dark:bg-[#3A3B3C] text-slate-500 dark:text-[#B0B3B8] hover:text-slate-900 dark:hover:text-[#E4E6EB]'
                 }`}
               >
                 {label}
@@ -379,11 +413,11 @@ export function SearchPage() {
           {/* ── No keyword state ── */}
           {!hasKeyword && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-20 h-20 rounded-full bg-[#3A3B3C] flex items-center justify-center mb-5">
-                <MagnifyingGlass className="w-10 h-10 text-[#B0B3B8]" />
+              <div className="w-20 h-20 rounded-full bg-slate-200 dark:bg-[#3A3B3C] flex items-center justify-center mb-5">
+                <MagnifyingGlass className="w-10 h-10 text-slate-500 dark:text-[#B0B3B8]" />
               </div>
-              <p className="text-[#E4E6EB] font-semibold text-xl">Tìm kiếm trên GenV</p>
-              <p className="text-[#B0B3B8] text-sm mt-2">Nhập từ khóa để tìm bài viết và người dùng.</p>
+              <p className="text-slate-900 dark:text-[#E4E6EB] font-semibold text-xl">Tìm kiếm trên GenV</p>
+              <p className="text-slate-500 dark:text-[#B0B3B8] text-sm mt-2">Nhập từ khóa để tìm bài viết và người dùng.</p>
             </div>
           )}
 

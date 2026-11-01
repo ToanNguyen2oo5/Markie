@@ -1,11 +1,15 @@
+import type { PostFile } from './postTypes';
+
 export interface SearchPostResult {
   id: string;
   userId: string;
   username: string | null;
+  avatar?: string | null;
+  files?: PostFile[];
   content: string;
   createdDate: string;
-  likeCount: number;
-  commentCount: number;
+  likeCount: number | null;
+  commentCount: number | null;
 }
 
 export interface SearchUserResult {
