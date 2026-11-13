@@ -1,5 +1,103 @@
 # Báo cáo nghiệm thu Task 08
 
+## Bài cũ và ma trận API bắt buộc đã bổ sung — từ `79d9d5d`
+
+Ngày 13/11/2026 (Asia/Saigon), checkout đúng `feature/ai-post-moderation`, HEAD
+đầu phiên `79d9d5d`, working tree sạch; đã đọc báo cáo/checklist và handoff trước
+khi chạy. Không tìm thấy AGENTS.md áp dụng. **Chỉ thực hiện mục bắt buộc còn
+thiếu**; không lặp U1–U5 hoặc ca AI thật V16–V19 và không mở rộng kiểm thử phụ.
+
+### Trạng thái đã xác nhận
+
+- **U1–U5 đạt theo người dùng**: chờ/khóa, chống gửi lặp, 422 giữ bản nháp và
+  sửa/gửi lại; 503 giả lập trong tab giữ bản nháp, mở lại thao tác và thử lại
+  nguyên nội dung thành công. Không đổi nguồn bằng chứng thành browser tự động.
+- **V16–V19 hoàn tất**: cả bốn ca AI thật 422/1015, 0 bài/0 post event, fixture
+  cố định và nhãn kỳ vọng chặn giữ nguyên. Không gọi lại AI để chọn kết quả.
+- **V12 chặn nhầm, V20 cho qua nhầm giữ nguyên** là hạn chế mô hình so với nhãn
+  người đánh giá; không phải lỗi chuyển HTTP hoặc kiểm soát save/event.
+
+### Đọc bài cũ: đạt ở mức API với JWT thật
+
+Chọn một bài trong database phát triển có `createdDate`
+**31/10/2026 20:55:59.681 +07**, trước tích hợp moderation tại commit `b1f66fd`
+(13/11/2026 13:56:23 +07). Truy vấn MongoDB chỉ đọc và giữ content/ID trong bộ nhớ,
+không in hoặc đưa vào báo cáo. GET qua Gateway `/post/post/{postId}` với JWT
+Keycloak hợp lệ trả **200/1000**, content khớp DB. Đọc lại DB sau GET: **toàn bộ
+document không đổi**. Không POST lại bài hoặc gọi quy trình kiểm duyệt mới;
+đường GET trong source không gọi ModerationService.
+
+Đây là bằng chứng đọc **một bài cũ đại diện**, không phải duyệt lại toàn bộ bài
+cũ hoặc kiểm tra render bài đó trong browser. Không thay dữ liệu cũ, không gán
+trạng thái đã qua AI cho bài cũ. Mục Task 08 §3.5 đã có bằng chứng chức năng đọc.
+
+### Bổ sung đúng biến thể API full stack còn thiếu: 10 ca đạt
+
+Để giữ nguyên Post Service người dùng, chạy **instance test riêng cổng 18083**
+từ classes hiện có, cấu hình key giả/base URL localhost:18909 chỉ trong process
+test. Provider stub riêng chỉ nhận key giả; không gửi key thật tới stub. Database
+test mới `markie_task08_missing_c732658583c345c781cba08228b7c3ca`; dùng MongoDB,
+Kafka, Search/Elasticsearch, Profile và JWT Keycloak thật. Request trực tiếp vào
+`http://localhost:18083/post/create`, **không đổi route Gateway hoặc process 8083**.
+Không mock security/repository/KafkaTemplate hoặc thêm endpoint vào sản phẩm.
+
+Lệnh script tạm `node post/post/target/task08-missing-check.cjs`, exit 0;
+**18:32:37–18:32:59 +07**, run ID `MARKIEMISSING1794569557615`. Post test được
+khởi động bằng `java -cp <classpath từ Surefire XML hiện có>
+com.stewie.post.PostApplication --server.port=18083
+--spring.data.mongodb.database=<DB test>` với biến môi trường key giả/model test/
+base URL test trong shell con. Không in classpath/credential/key người dùng.
+
+| Ca bổ sung | HTTP/code | Số gọi stub | DB / post event |
+|---|---|---:|---:|
+| Provider HTTP 401, body có flagged=false | 503/1016 | 1 | 0 / 0 |
+| Provider HTTP 429, body có flagged=false | 503/1016 | 1 | 0 / 0 |
+| JSON provider sai | 503/1016 | 1 | 0 / 0 |
+| results rỗng | 503/1016 | 1 | 0 / 0 |
+| flagged thiếu | 503/1016 | 1 | 0 / 0 |
+| flagged null | 503/1016 | 1 | 0 / 0 |
+| Content thiếu | 400/1017 | 0 | 0 / 0 |
+| Content null | 400/1017 | 0 | 0 / 0 |
+| Content rỗng | 400/1017 | 0 | 0 / 0 |
+| Đúng 500 ASCII, provider false | 200/1000 | 1 | 1 / 1 |
+
+Trong chín ca từ chối, DB test theo tài khoản thử vẫn 0 bài. Cuối lượt chỉ có
+1 bài đúng 500 ký tự; input stub/response/save/event giữ nguyên. Console consumer
+đọc được topic và lọc user tổng hợp trong bộ nhớ: đúng **1 event**, postId/content
+khớp bài 500; không có event khác của user đó. Bài này đã có trong Elasticsearch
+với đúng postId/content, vòng poll sau bộ request mất 42 ms (không phải latency
+toàn trình). Không suy từ search tức thì ra không lưu. Các ca false/true/timeout/
+HTTP500/flagged chuỗi/whitespace/quá dài đã có full stack ở các phiên trước;
+không lặp lại các ca đã đủ bằng chứng.
+
+Script/stub tạm đã dọn, không commit mã stub; kết quả phiên này không phải bộ
+test mới có thể chạy lại từ commit. Giữ DB/account/profile và 1 bài/event/search
+document tổng hợp mới, không drop/reset dữ liệu. Đã dừng **chỉ instance test do
+phiên này tạo**; cổng 18083 và 18909 đóng. PID **26776**, thời điểm bắt đầu
+15:34:37 +07 và cổng 8083 được giữ nguyên; không đọc key/env/command line hoặc
+đổi endpoint/config tiến trình người dùng.
+
+### Chỉ còn UI 500/501 chờ bằng chứng bắt buộc
+
+Thử Chrome phiên này vẫn `The browser access host is unavailable`. Đã gửi người
+dùng hai bước cụ thể và thêm [U6 trong checklist](ui-manual-checklist.md):
+501/500 phải khóa Đăng, không request/không thêm feed; giảm còn 500/500 phải mở
+Đăng và thử gửi đúng một lần, ghi kết quả API/UI thực tế. **Chưa nhận phản hồi,
+không đánh dấu UI 500/501 đạt**. API 500 ở instance test không thay thế browser.
+
+**Kết luận:** tích hợp backend đã có bằng chứng ba luồng đạt/chặn/lỗi, validation
+và các biến thể bắt buộc còn thiếu đã bổ sung; đọc bài cũ đạt ở mức API. UI
+U1–U5 đạt theo kiểm thử người dùng; **chưa chốt toàn bộ nghiệm thu Task 08 đạt chỉ
+vì U6 500/501 chưa có xác nhận UI**. Hạn chế mô hình V12/V20 vẫn giữ nguyên,
+không tự đổi policy hoặc tạo cổng “mọi mẫu phải đúng” cho nghiệm thu tích hợp.
+
+UI mất mạng/response sai, refresh token lỗi riêng, emoji 250/251 vẫn chưa có
+browser evidence nhưng là **ca phụ**, không thực hiện hoặc nâng thành điều kiện
+mới trong phiên này. Không yêu cầu thêm pin model/browser/thiết bị/tải. Không
+sửa mã sản phẩm, không chạy lại unit/build/lint; kết quả 96/96 và build/lint ở
+lịch sử không bị mô tả là vừa chạy lại. Diff được kiểm tra trước commit; không
+push/merge/triển khai. Các mục thiếu đã được giải quyết bên dưới nay là lịch sử.
+
 ## U5 được người dùng xác nhận — tiếp tục từ `e82358c`
 
 Ngày 13/11/2026 (Asia/Saigon), đúng nhánh `feature/ai-post-moderation`, HEAD đầu

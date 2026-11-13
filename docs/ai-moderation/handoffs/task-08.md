@@ -1,5 +1,39 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## Chỉ còn UI 500/501 chờ người dùng — từ `79d9d5d`
+
+Ngày 13/11/2026; nhánh `feature/ai-post-moderation`, HEAD đầu phiên `79d9d5d`,
+working tree sạch. Đã đọc báo cáo/handoff/checklist, không có AGENTS.md áp dụng.
+Chỉ thực hiện phần bắt buộc còn thiếu, không mở rộng hoặc lặp các ca đã đạt.
+
+- U1–U5 giữ nguyên đạt theo kiểm thử thủ công. V16–V19 đã hoàn tất bốn ca AI thật
+  422/1015 và 0 bài/event, không gọi lại. V12 chặn nhầm/V20 cho qua nhầm giữ nguyên.
+- **Đọc bài cũ đạt qua API**: một bài ngày 31/10/2026, trước tích hợp moderation,
+  GET qua Gateway với JWT thật trả 200/1000; content khớp và toàn document DB
+  không đổi sau đọc. Không in ID/content và không POST duyệt lại bài cũ.
+- **10 ca API còn thiếu đạt** bằng Post test riêng 18083, stub riêng 18909/key
+  giả, DB test mới, JWT/MongoDB/Kafka/Profile/Search thật. 401/429, JSON sai,
+  results rỗng, flagged thiếu/null → 503/1016, 0 bài/event; thiếu/null/rỗng content
+  → 400/1017, 0 provider call/0 bài/event. Đúng 500 ASCII và provider false →
+  200/1000, 1 bài/1 event, content giữ nguyên và đồng bộ Elasticsearch.
+- Script tạm `task08-missing-check.cjs` exit 0, **18:32:37–18:32:59 +07**,
+  run ID `MARKIEMISSING1794569557615`. Request trực tiếp Post test, không đổi
+  Gateway hoặc process 8083. Script/stub đã dọn, instance test đã dừng; 18083 và
+  18909 đóng. Giữ dữ liệu tổng hợp mới, không drop/reset dữ liệu có sẵn.
+- **PID 26776 giữ nguyên** bắt đầu 15:34:37 +07, cổng 8083 vẫn mở; không đọc key/
+  env/command line, không restart/dừng/đổi endpoint của process người dùng.
+
+Chrome vẫn host unavailable. Đã gửi U6 thủ công trong
+[ui-manual-checklist.md](../ui-manual-checklist.md): 501 khóa Đăng/không request,
+500 cho phép gửi một request và ghi kết quả. **Chưa có phản hồi U6; chưa đánh dấu
+UI giới hạn độ dài đạt**. Không nhầm API 500 đạt với browser đã kiểm tra.
+
+Tích hợp backend/validation/ba luồng và đọc bài cũ đã có bằng chứng; UI U1–U5
+đạt thủ công. **Chưa chốt toàn bộ Task 08 chỉ vì U6 còn chờ xác nhận**. Các ca
+phụ UI mạng/response sai/refresh lỗi riêng/emoji không chạy và không làm cổng mới.
+Hạn chế mô hình V12/V20 được tách riêng, không đổi chính sách để ép kết quả.
+Chỉ cập nhật tài liệu, không chạy lại unit/build/lint, không push/merge/triển khai.
+
 ## U5 đạt theo người dùng — từ `e82358c`
 
 Ngày 13/11/2026, checkout đúng `feature/ai-post-moderation`, HEAD đầu phiên

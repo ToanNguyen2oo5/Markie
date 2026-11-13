@@ -116,13 +116,35 @@ lần thử lại thành công được xác nhận qua UI. Không thay key/endp
 
 ## Các ca còn thiếu ngoài U5 — không mở rộng phạm vi
 
-**Bắt buộc đã có trong Task 08:** UI nội dung dài (thử 500/501 ASCII; 501 không
-gửi request, không thêm bài; 500 hợp lệ có thể đăng nếu AI cho qua); đọc một bài
-đã tồn tại trước tích hợp AI và không gán nhãn đã duyệt lại. Cả hai chưa có xác
-nhận thủ công trong báo cáo hiện tại.
+**Bắt buộc còn chờ UI:** nội dung dài 500/501 ASCII, theo U6 dưới đây.
+Đọc bài cũ đã được xác minh qua API có JWT ở phiên tiếp tục từ `79d9d5d`:
+bài ngày 31/10/2026 trả 200/1000, content và toàn bộ bản ghi không đổi sau đọc.
+Không tuyên bố bài cũ được kiểm duyệt lại, không coi đây là thao tác browser.
 
 **Ca phụ, không là cổng nghiệm thu Task 08 mới:** UI lỗi mạng, HTML/JSON response
 sai (robustness của Task 07), refresh token lỗi riêng, thử thêm 250/251 emoji trên
 UI. Các mục này chưa có bằng chứng browser hiện tại; giới hạn UTF-16/response
 handling đã có kiểm tra backend hoặc harness lịch sử ở mức thấp hơn, không
 được mô tả như đã chạy UI. Không yêu cầu thêm tải, thiết bị, browser hoặc policy.
+
+## U6 — UI đúng 500 và 501 ký tự, đang chờ người dùng
+
+1. Tại localhost:3000, mở composer. Trong DevTools Console chạy
+   `copy('a'.repeat(501))`, rồi dán vào textarea. Mong đợi bộ đếm **501/500**,
+   nút Đăng bị khóa, không có POST `/post/create` hoặc bài mới.
+2. Xóa đúng một chữ `a`, còn **500/500**. Mong đợi nút Đăng bật. Bấm một lần,
+   xác nhận có đúng một POST; ghi HTTP/code và kết quả UI. Nếu AI thật cho qua,
+   bài đăng thành công/modal đóng; nếu AI chặn hoặc lỗi, ghi đúng kết quả, không
+   suy ra lỗi giới hạn độ dài chỉ vì AI không cho qua.
+
+Lệnh Console chỉ chép chuỗi tổng hợp vào clipboard, không đổi fetch/key/endpoint
+hoặc gửi request. Nếu DevTools chặn, không bỏ bảo vệ; ghi chưa thử. Lần gửi 500
+đi qua AI thật và có thể lưu bài thử. Không gửi key/token vào chat.
+
+| Biên | Trạng thái |
+|---|---|
+| 501: counter/disable/không gửi/không thêm feed | Chờ người dùng |
+| 500: counter/nút bật/1 request/kết quả UI | Chờ người dùng |
+
+Kiểm tra API đúng 500 qua provider giả lập đã đạt trong instance test riêng;
+**không thay thế U6 trên browser**. Không yêu cầu lặp U1–U5 hoặc V16–V19.
