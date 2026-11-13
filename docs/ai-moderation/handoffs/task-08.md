@@ -1,5 +1,26 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## U5 đạt theo người dùng — từ `e82358c`
+
+Ngày 13/11/2026, checkout đúng `feature/ai-post-moderation`, HEAD đầu phiên
+`e82358c`, working tree sạch. Người dùng xác nhận các kết quả UI 503/1016 đúng
+hướng dẫn: thông báo, giữ modal/bản nháp, mở lại thao tác, feed không thêm bài ở
+lần lỗi. Sau khi giả lập tự gỡ, **giữ nguyên nội dung và bấm Đăng lại thành công**.
+
+**U5 đạt theo kiểm thử thủ công**, không phải browser E2E tự động hoặc phản hồi
+503 mới từ backend. Retry nguyên nội dung là đúng với lỗi kỹ thuật, không phải
+bypass và không cần sửa nội dung như ca bị từ chối 422/1015. Không thu HAR/raw
+response mới. Checklist/README/báo cáo đã cập nhật; U1–U5 không còn chờ xác nhận.
+
+Còn thiếu đúng phạm vi đã liệt kê: UI 500/501, đọc bài cũ, các biến thể ma trận
+API full stack. Không thêm cổng từ ca phụ. V16–V19 đã hoàn tất, V12 chặn nhầm và
+V20 cho qua nhầm giữ nguyên. **Chưa chốt toàn bộ Task 08 đạt**.
+
+Chỉ cập nhật tài liệu, không gọi API/AI hoặc chạy lại test/build. PID 26776 giữ
+nguyên thời điểm bắt đầu 15:34:37 +07, không đọc key/env/command line hoặc thay
+dịch vụ/cấu hình/dữ liệu. Không push/merge/triển khai. Các mục U5 chờ ở dưới là
+lịch sử trước phản hồi người dùng này.
+
 ## UI 503/1016 và ranh giới nghiệm thu — từ `54f88e2`
 
 Ngày 13/11/2026, đúng nhánh `feature/ai-post-moderation`, HEAD đầu phiên

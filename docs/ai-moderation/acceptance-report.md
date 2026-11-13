@@ -1,5 +1,29 @@
 # Báo cáo nghiệm thu Task 08
 
+## U5 được người dùng xác nhận — tiếp tục từ `e82358c`
+
+Ngày 13/11/2026 (Asia/Saigon), đúng nhánh `feature/ai-post-moderation`, HEAD đầu
+phiên `e82358c`, working tree sạch. Người dùng xác nhận các bước U5 đúng mô tả:
+thông báo 1016, giữ modal/nội dung, hết chờ và mở lại thao tác, không thêm bài ở
+lần lỗi; sau đó **không sửa nội dung, bấm Đăng lại thành công**.
+
+**U5 đạt theo kiểm thử UI thủ công của người dùng.** Giữ nguyên bản nháp và gửi
+lại sau 503/1016 là hành vi đúng: lỗi kỹ thuật không phải quyết định nội dung bị
+cấm. Giả lập trong tab tự gỡ sau lần lỗi; lần thử lại đi qua backend/provider
+thật. Không cần sửa content để cho phép thử lại, không phải bypass moderation.
+Không coi phản hồi 503 mô phỏng là lỗi backend thật, không có raw response/HAR
+mới và agent không tự điều khiển được browser.
+
+U1–U5 đã có xác nhận UI thủ công. **Chưa chốt toàn bộ Task 08 đạt**: còn UI nội
+dung dài 500/501, đọc bài cũ và các biến thể ma trận API full stack đã liệt kê
+ở mục dưới. Ca phụ vẫn chỉ là ca phụ, không thêm điều kiện nghiệm thu mới.
+V16–V19 đã hoàn tất; V12 chặn nhầm/V20 cho qua nhầm giữ nguyên là hạn chế mô hình,
+không thay chính sách hoặc coi lần thử lại U5 là sửa được hai sai lệch này.
+
+Chỉ cập nhật tài liệu, không gọi lại API/AI/test/build. PID 26776 vẫn bắt đầu
+15:34:37 +07; không đọc key/env/command line, restart/dừng hoặc đổi endpoint.
+Không thay dữ liệu, push/merge/triển khai. Các mục “U5 chờ” dưới đây là lịch sử.
+
 ## Đối chiếu phạm vi và UI 503/1016 — tiếp tục từ `54f88e2`
 
 Ngày 13/11/2026 (Asia/Saigon), checkout `feature/ai-post-moderation`, HEAD đầu

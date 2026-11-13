@@ -27,7 +27,12 @@ Không chép câu đe dọa vào báo cáo; người dùng dùng mẫu tổng h�
 xác nhận cho lỗi AI 503/1016, mạng/response sai, refresh token lỗi hoặc từng biên
 UTF-16. Không gây lỗi bằng đổi key/endpoint hoặc dừng Post Service người dùng.
 
-## U5 — HTTP 503/code 1016 giả lập trong tab, đang chờ người dùng
+## U5 — HTTP 503/code 1016 giả lập trong tab, được người dùng xác nhận
+
+Ngày 13/11/2026: người dùng xác nhận các bước đúng mô tả, sau lỗi đã giữ nguyên
+nội dung và bấm Đăng lại thành công. **U5 đạt theo kiểm thử thủ công**, không phải
+browser E2E tự động. Không cần sửa nội dung để thử lại lỗi kỹ thuật 503/1016;
+khác với 422/1015 từ chối nội dung. Giả lập tự gỡ nên lần thứ hai gọi backend thật.
 
 Mục bắt buộc theo Task 08 §3.3 và điều kiện ba luồng đạt/chặn/lỗi ở UI. Đoạn mã
 dưới chỉ thay `window.fetch` tạm thời của **tab localhost:3000**; không đổi URL
@@ -99,13 +104,15 @@ DevTools nếu trình duyệt chặn thao tác; báo chưa chạy để chọn m
 
 | Kiểm tra U5 | Trạng thái |
 |---|---|
-| Đúng thông báo 1016 | Chờ người dùng |
-| Giữ modal và nguyên nội dung | Chờ người dùng |
-| Giải phóng trạng thái chờ/khóa | Chờ người dùng |
-| Không thêm bài vào feed ở lần lỗi | Chờ người dùng |
-| Có thể thử lại; kết quả lần thử lại | Chờ người dùng |
+| Đúng thông báo 1016 | Đạt theo người dùng |
+| Giữ modal và nguyên nội dung | Đạt theo người dùng |
+| Giải phóng trạng thái chờ/khóa | Đạt theo người dùng |
+| Không thêm bài vào feed ở lần lỗi | Đạt theo người dùng |
+| Có thể thử lại; kết quả lần thử lại | Đạt: giữ nguyên nội dung, bấm Đăng lại thành công sau khi giả lập tự gỡ |
 
-Gửi kết quả năm dòng trên, kèm lỗi nếu có; không gửi key/token hoặc toàn bộ log.
+Không có raw response/HAR mới; bằng chứng là người dùng trực tiếp xác nhận.
+Lần đầu mô phỏng lỗi trong tab không chứng minh backend lỗi trong lượt này;
+lần thử lại thành công được xác nhận qua UI. Không thay key/endpoint hoặc process.
 
 ## Các ca còn thiếu ngoài U5 — không mở rộng phạm vi
 

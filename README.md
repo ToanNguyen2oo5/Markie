@@ -70,9 +70,9 @@ MongoDB/Kafka/search thật và provider giả lập đã chạy đạt các ca 
 Phiên tiếp theo đã gọi provider thật qua Post Service do người dùng cấu hình:
 16 ca tiếng Việt có 14 ca cho qua, 2 ca chặn, đồng thời ghi nhận chặn nhầm V12 và
 cho qua nhầm V20. V16–V19 đã bổ sung fixture và chạy tiếp: cả bốn bị chặn, không
-lưu bài/event. Người dùng đã xác nhận UI U1–U4 đạt theo
-[checklist thủ công](docs/ai-moderation/ui-manual-checklist.md). UI nhánh lỗi
-503/1016 đang chờ người dùng theo hướng dẫn U5 trong checklist. Báo cáo phân biệt
+lưu bài/event. Người dùng đã xác nhận UI U1–U5 đạt theo
+[checklist thủ công](docs/ai-moderation/ui-manual-checklist.md), gồm lỗi 503/1016
+giả lập trong tab và gửi lại nguyên nội dung thành công. Báo cáo phân biệt
 các mục bắt buộc còn thiếu (UI nội dung dài, bài cũ, biến thể ma trận API) với ca
 phụ; hai sai lệch mô hình vẫn giữ nguyên.
 
