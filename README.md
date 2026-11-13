@@ -62,9 +62,10 @@ giới hạn và đối chiếu postId/nội dung. Khôi phục môi trường s
 Chỉ thử AI thật khi đã có key thử nghiệm hợp lệ; dùng
 [bộ ca tiếng Việt](docs/ai-moderation/policy-and-cases.md), ghi chặn nhầm/cho qua nhầm.
 
-Trạng thái Task 08: **triển khai xong nhưng chưa nghiệm thu toàn luồng**.
+Trạng thái Task 08: **hoàn thành và nghiệm thu đạt trong phạm vi đã giao**
+(test backend/API với hạ tầng thật và xác nhận UI thủ công).
 Xem [báo cáo nghiệm thu](docs/ai-moderation/acceptance-report.md) để biết bằng
-chứng đã chạy và các kiểm tra UI còn thiếu. Lỗi MongoDB E11000 đã được
+chứng đã chạy và giới hạn kiểm thử. Lỗi MongoDB E11000 đã được
 sửa bằng partial unique index cho schema `post_id`; tích hợp backend với JWT,
 MongoDB/Kafka/search thật và provider giả lập đã chạy đạt các ca chính.
 Phiên tiếp theo đã gọi provider thật qua Post Service do người dùng cấu hình:
@@ -74,9 +75,10 @@ lưu bài/event. Người dùng đã xác nhận UI U1–U5 đạt theo
 [checklist thủ công](docs/ai-moderation/ui-manual-checklist.md), gồm lỗi 503/1016
 giả lập trong tab và gửi lại nguyên nội dung thành công. Báo cáo phân biệt
 các mục bắt buộc với ca phụ: bài cũ đã đọc được qua API và các biến thể API còn
-thiếu đã chạy đạt trong Post test riêng. **UI 500 đạt theo người dùng; 501 đã
-xác nhận counter/khóa nút nhưng chưa xác nhận riêng Network/không thêm feed**;
-U6 chưa đạt toàn bộ. Hai sai lệch mô hình vẫn giữ nguyên.
+thiếu đã chạy đạt trong Post test riêng. **U6 đạt theo người dùng:** 500 đăng
+thành công; 501 khóa nút, thử nhấn không có request và không thêm feed. Không còn
+mục bắt buộc chờ. **V12 chặn nhầm và V20 cho qua nhầm vẫn giữ nguyên**; nghiệm thu
+tích hợp không bảo đảm mô hình phân loại đúng mọi nội dung hoặc cho phép rollout.
 
 Full context test dùng database MongoDB mới `markie_context_test_<uuid>` và key
 giả, không seed vào database phát triển; có thể cấu hình Mongo test server qua

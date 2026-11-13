@@ -1,5 +1,60 @@
 # Báo cáo nghiệm thu Task 08
 
+## Kết luận cuối — Task 08 hoàn thành và nghiệm thu đạt trong phạm vi đã giao
+
+Ngày chốt **13/11/2026 (Asia/Saigon)**, nhánh `feature/ai-post-moderation`, HEAD
+đầu phiên `487578e`, working tree sạch. Đã đối chiếu lại điều kiện của
+`10-TASK-08-ACCEPTANCE.md` với bằng chứng các phiên và xác nhận cuối của người
+dùng. **Không còn mục bắt buộc thiếu bằng chứng trong phạm vi Task 08.**
+
+### Bằng chứng cuối bổ sung
+
+Người dùng xác nhận riêng: tại **501/500**, nút Đăng bị khóa; thử nhấn **không
+phát sinh POST `/post/create` và feed không thêm bài**. Hai mục trước đó để chưa
+xác nhận nay được đánh dấu đạt theo phản hồi trực tiếp, không suy từ disabled.
+Ca **500/500** đã xác nhận đúng một request, HTTP 200/code 1000, modal đóng và
+bài xuất hiện trên feed. **U6 hoàn tất; U1–U6 đạt theo kiểm thử UI thủ công.**
+Không có HAR/browser automation mới, không chuyển nguồn xác nhận thành agent E2E.
+
+### Đối chiếu điều kiện bắt buộc khi chốt
+
+| Phần bắt buộc | Bằng chứng và kết luận |
+|---|---|
+| Test nghiệp vụ, full context và frontend build/lint | Bộ liên quan 94/94; full suite 96/96, 0 failure/error/skipped sau sửa index; build/lint exit 0. Đây là các lượt đã ghi ở phần lịch sử, không phải chạy lại lúc chốt tài liệu |
+| API validation và moderation, ba nhánh đạt/chặn/lỗi | Đã có request JWT thật, Post/DB/Kafka/search thật; provider thật cho đánh giá nội dung và provider riêng/key giả cho lỗi xác định. Mười biến thể còn thiếu đã hoàn tất trong instance test riêng, không thay Post người dùng |
+| Không lưu/phát event cho nội dung bị từ chối hoặc AI lỗi | Đã đối chiếu MongoDB trực tiếp, Kafka consumer đọc được topic và lọc tài khoản thử; invalid content không gọi provider; bài đạt có content giữ nguyên và đồng bộ search |
+| UI thành công, bị chặn, AI lỗi, chờ/khóa, chống gửi lặp, sửa/thử lại | U1–U5 được người dùng xác nhận; ca UI 503 dùng Response giả lập trong tab, không được coi là backend phát 503 mới |
+| UI giới hạn 500/501 | U6 được xác nhận đầy đủ, gồm riêng không request/không thêm feed tại 501 |
+| Bài cũ vẫn đọc được | Một bài ngày 31/10/2026 đọc qua API JWT trả 200/1000; content và document DB không đổi; không duyệt lại bài cũ |
+| AI thật và bộ ca tiếng Việt | Cả 20 ID có kết quả qua hai lượt: 14 cho qua, 6 chặn; V16–V19 đều 422/1015, 0 bài/event. Ghi cả hai lệch kỳ vọng, không đổi policy ép nhãn |
+| Tài liệu, cấu hình và bảo toàn môi trường | README/configuration/report/handoff/checklist có đủ; không commit secret hoặc server stub/bypass trong sản phẩm. Process test đã dừng, không đổi key/endpoint hoặc dừng Post Service người dùng |
+
+**Kết luận tích hợp: hoàn thành và nghiệm thu đạt Task 08** bằng tổ hợp test tự
+động đã ghi nhận, kiểm tra API/hạ tầng thật và xác nhận UI thủ công. Không khẳng
+định có một bộ browser E2E tự động bao phủ mọi bước hoặc script tạm đã dọn có
+thể tái chạy từ commit. Các fixture V16–V19 vẫn có source để tái sử dụng.
+
+### Hạn chế mô hình và phần ngoài điều kiện bắt buộc
+
+**Giữ nguyên V12 chặn nhầm và V20 cho qua nhầm.** Nghiệm thu tích hợp nghĩa là
+ứng dụng thực hiện đúng quyết định boolean của provider và kiểm soát side effect,
+không bảo đảm mô hình phân loại đúng mọi câu. Không đổi nhãn, ngưỡng, model hoặc
+thêm ngoại lệ để làm kết quả đẹp hơn. Bộ mẫu nhỏ không cho phép kết luận chất
+lượng chung; runtime model override/model ID upstream chưa xác minh độc lập.
+
+Các ca phụ UI mất mạng/response sai, refresh token lỗi riêng, emoji 250/251 chưa
+có bằng chứng browser, không bị đổi thành đã đạt. Không nâng chúng thành điều
+kiện nghiệm thu mới. Đọc bài cũ được xác minh qua API trên một bài đại diện,
+không phải kiểm tra render toàn bộ bài cũ hoặc kiểm duyệt lại dữ liệu cũ.
+Chốt Task 08 không phải phê duyệt rollout hoặc kết luận mô hình không có rủi ro.
+
+Phiên chốt chỉ cập nhật tài liệu/checklist, không gọi API/AI, không chạy lại
+test/build và không đổi dữ liệu. PID **26776** giữ nguyên thời điểm bắt đầu
+**15:34:37 +07**; không đọc key/env/command line, không restart/dừng hoặc đổi
+endpoint. Diff được kiểm tra trước commit; không push/merge/triển khai.
+Các trạng thái “còn thiếu/chưa chốt” ở dưới được giữ như lịch sử, đã được thay
+thế bởi kết luận cuối này, không phải các mục còn mở.
+
 ## UI 500 đạt, UI 501 xác nhận một phần — từ `f29d01a`
 
 Ngày 13/11/2026 (Asia/Saigon), nhánh `feature/ai-post-moderation`, HEAD đầu phiên

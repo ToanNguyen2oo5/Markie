@@ -1,5 +1,35 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## Chốt Task 08 — hoàn thành và nghiệm thu đạt
+
+Ngày 13/11/2026 (Asia/Saigon); nhánh `feature/ai-post-moderation`, HEAD đầu phiên
+`487578e`, working tree sạch. Đã đọc/đối chiếu yêu cầu Task 08 và báo cáo hiện tại.
+
+Người dùng xác nhận cuối tại 501/500: Đăng bị khóa, thử nhấn không có POST
+`/post/create` và feed không thêm bài. **U6 đạt đầy đủ** cùng với ca 500 đã có
+200/1000, một request, đóng modal và bài xuất hiện. **U1–U6 đạt thủ công**;
+không còn mục UI bắt buộc chờ và không chuyển thành browser E2E tự động.
+
+Đối chiếu cuối: 94 test nghiệp vụ/96 full suite và frontend build/lint đã đạt
+ở các lượt ghi trước; ma trận API validation/đạt/chặn/lỗi với JWT và hạ tầng
+thật đã đủ; không save/event cho ca từ chối/lỗi; content bài đạt giữ nguyên và
+đồng bộ search; bài cũ đại diện đọc được qua API, không đổi document/duyệt lại.
+Cả 20 ID tiếng Việt đã có quan sát, V16–V19 đều 422/1015 và 0 bài/event.
+README/cấu hình/report/checklist/handoff đủ, không secret hoặc stub trong sản phẩm.
+
+**Kết luận: hoàn thành và nghiệm thu đạt trong phạm vi Task 08.** Chi tiết nguồn
+và giới hạn của từng bằng chứng ở [acceptance-report.md](../acceptance-report.md).
+Không còn mục bắt buộc thiếu; không mở thêm ca phụ. **V12 chặn nhầm và V20 cho
+qua nhầm giữ nguyên là hạn chế mô hình**, không sửa policy ép nhãn hoặc coi chốt
+tích hợp là bảo đảm chất lượng mọi nội dung/cho phép triển khai. UI lỗi mạng/
+response sai, refresh token lỗi riêng, emoji 250/251 vẫn chưa có browser evidence;
+model ID upstream chưa xác minh độc lập; không đánh dấu các mục đó đã kiểm tra.
+
+Chỉ cập nhật tài liệu/checklist, không gọi lại API/AI hoặc test/build. PID 26776
+vẫn bắt đầu 15:34:37 +07, không đọc key/env/command line, không restart/dừng/đổi
+endpoint hoặc dữ liệu. Không push/merge/triển khai. Commit chốt được báo ở phản
+hồi cuối; các mục chưa chốt phía dưới là lịch sử và không còn là trạng thái mở.
+
 ## UI 500 đạt; 501 còn thiếu bằng chứng riêng — từ `f29d01a`
 
 Ngày 13/11/2026; nhánh `feature/ai-post-moderation`, HEAD đầu phiên `f29d01a`,
