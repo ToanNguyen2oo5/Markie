@@ -1,5 +1,32 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## UI U1–U4 được người dùng xác nhận — từ `cd3f88b`
+
+Ngày 13/11/2026 (Asia/Saigon), đúng nhánh `feature/ai-post-moderation`, HEAD đầu
+phiên `cd3f88b`, working tree sạch. Đã nhận và rà soát phản hồi thủ công:
+
+- **U1 đạt:** có trạng thái chờ và khóa textarea/Đăng/đóng/backdrop.
+- **U2 đạt:** bấm nhanh nhiều lần chỉ 1 POST tạo bài, feed thêm 1 bài.
+- **U3 đạt:** người dùng thử câu đe dọa tổng hợp, DevTools xác nhận 422/1015;
+  modal giữ nội dung, không tạo bài trong feed.
+- **U4 đạt về UI:** sửa thành lời chào, đăng thành công và modal đóng; người dùng
+  xác nhận bổ sung mở lại composer thì nội dung trống.
+
+Đây là bằng chứng **người dùng kiểm thử UI thủ công**, không phải agent điều
+khiển trình duyệt/browser E2E tự động. Không nhận screenshot/HAR/raw response
+thành công mới, không chép câu nhạy cảm vào báo cáo. Checklist đã cập nhật đúng
+[ui-manual-checklist.md](../ui-manual-checklist.md); không còn chờ U1–U4.
+
+Giữ nguyên V12 chặn nhầm/V20 cho qua nhầm và toàn bộ kết quả API/model trước.
+**Chưa chốt toàn bộ Task 08 đạt**: chưa có xác nhận UI 503/1016, lỗi mạng/response
+sai/refresh token lỗi và các biên độ dài. Hạn chế mô hình cần đánh giá sản phẩm,
+khác với lỗi tích hợp mapping/side effect. Không đổi policy hoặc chọn lại kết quả.
+
+Chỉ sửa README, checklist, acceptance-report và handoff; không gọi thêm API/AI,
+không chạy lại test/build. PID 26776 vẫn giữ thời điểm khởi động 15:34:37 +07;
+không đọc key/env/command line, không restart hoặc đổi endpoint. Không thay dữ
+liệu, push/merge/triển khai. Commit được báo ở phản hồi cuối.
+
 ## V16–V19 hoàn tất, UI chờ kết quả — từ `c1fe162`
 
 Ngày 13/11/2026; nhánh giữ nguyên `feature/ai-post-moderation`, HEAD đầu phiên

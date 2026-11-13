@@ -1,5 +1,43 @@
 # Báo cáo nghiệm thu Task 08
 
+## Người dùng xác nhận UI U1–U4 — tiếp tục từ `cd3f88b`
+
+Ngày ghi nhận **13/11/2026 (Asia/Saigon)**. **U1–U4 đạt theo kiểm thử UI thủ công
+của người dùng**, gồm trạng thái chờ/khóa thao tác, chống gửi lặp, bài bị chặn
+giữ bản nháp và sửa/gửi lại thành công. Người dùng đã xác nhận riêng mở composer
+lại thì nội dung trống. Không còn chờ kết quả của bốn mục này.
+
+| Mục | Bằng chứng người dùng cung cấp |
+|---|---|
+| U1 | Xác nhận có “Đang kiểm duyệt…” và khóa textarea/nút Đăng/nút đóng/backdrop khi chờ |
+| U2 | Xác nhận bấm nhanh nhiều lần chỉ 1 POST `/post/create` và feed thêm 1 bài |
+| U3 | Với câu đe dọa tổng hợp tự thử: modal giữ nội dung, feed không có bài mới; DevTools xác nhận HTTP 422 và code 1015 |
+| U4 | Sửa thành lời chào vô hại: đăng thành công, modal đóng; phản hồi bổ sung xác nhận mở lại composer nội dung trống |
+
+Nguồn: hai phản hồi trực tiếp của người dùng trong chat. Không có screenshot/HAR
+hoặc browser E2E tự động; agent vẫn không điều khiển được trình duyệt. Không
+chép nội dung đe dọa vào báo cáo. Mẫu U3 do người dùng chọn, không coi là chạy
+lại nguyên fixture V16–V19 hoặc bằng chứng thay đổi kết quả V12/V20. Response
+thành công của lần gửi lại được xác nhận qua UI; không có raw response body mới
+được cung cấp cho bước này.
+
+**Phân loại hiện tại:** tích hợp backend với hạ tầng/provider thật đã có bằng
+chứng và UI luồng chính U1–U4 đã được người dùng xác nhận. **Chưa chốt toàn bộ
+nghiệm thu Task 08 đạt**: nhánh UI AI lỗi 503/1016 chưa được xác nhận, các nhánh
+mạng/response sai/refresh token lỗi và biên độ dài còn thiếu kiểm tra UI. Các ca
+backend/provider giả lập không thay thế bằng chứng UI cho những nhánh đó.
+V12 chặn nhầm và V20 cho qua nhầm giữ nguyên như hạn chế mô hình, không gọi là
+lỗi mapping tích hợp và không tự đổi policy để ép kết quả. Cần quyết định sản
+phẩm riêng về hai sai lệch; không suy ra mọi nội dung tiếng Việt đều được phân
+loại đúng từ U1–U4.
+
+Checkout đầu phiên `feature/ai-post-moderation`, HEAD `cd3f88b`, working tree
+sạch. Chỉ cập nhật tài liệu/checklist, không chạy thêm API hoặc gọi AI và không
+chạy lại unit/context/build/lint. `git diff --check` trước commit đạt. PID 26776
+vẫn có thời điểm bắt đầu **15:34:37 +07**, không đọc key/env/command line,
+không restart/dừng/đổi provider hoặc thay dữ liệu. Không push/merge/triển khai.
+Chi tiết các lượt kiểm thử trước được giữ ở phần lịch sử bên dưới.
+
 ## Hoàn tất V16–V19, UI chờ người dùng — tiếp tục từ `c1fe162`
 
 **Đã chạy bổ sung V16–V19 với AI thật; cả bốn ca trả 422/1015, không lưu bài hoặc

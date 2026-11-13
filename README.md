@@ -70,9 +70,9 @@ MongoDB/Kafka/search thật và provider giả lập đã chạy đạt các ca 
 Phiên tiếp theo đã gọi provider thật qua Post Service do người dùng cấu hình:
 16 ca tiếng Việt có 14 ca cho qua, 2 ca chặn, đồng thời ghi nhận chặn nhầm V12 và
 cho qua nhầm V20. V16–V19 đã bổ sung fixture và chạy tiếp: cả bốn bị chặn, không
-lưu bài/event. UI vẫn chờ kết quả người dùng theo
-[checklist thủ công](docs/ai-moderation/ui-manual-checklist.md); xem báo cáo để
-biết giới hạn và hai sai lệch mô hình vẫn được giữ nguyên.
+lưu bài/event. Người dùng đã xác nhận UI U1–U4 đạt theo
+[checklist thủ công](docs/ai-moderation/ui-manual-checklist.md). UI nhánh lỗi
+503/1016 và các ca phụ chưa được xác nhận; hai sai lệch mô hình vẫn giữ nguyên.
 
 Full context test dùng database MongoDB mới `markie_context_test_<uuid>` và key
 giả, không seed vào database phát triển; có thể cấu hình Mongo test server qua
