@@ -71,3 +71,37 @@ Inject `@Qualifier("moderationRestClient") RestClient restClient` và `Moderatio
 Task 03 sẽ dùng `POST /v1/moderations` với `model` và `input`, triển khai `ModerationClient.isFlagged`, provider exception và `ModerationService.assertAllowed` theo hợp đồng chung. Các lớp đó chưa được tạo ở đây. Task 03 chỉ bắt đầu sau khi có cả Task 02 **và Task 06**; các chặn E2E/hạ tầng vẫn theo Task 00.
 
 Không có thay đổi hợp đồng chung. Không push, triển khai hoặc làm task kế tiếp.
+
+## Tập hợp kết quả lên nhánh riêng (13/11/2026)
+
+- Checkout xác minh bằng `git rev-parse --show-toplevel`: `C:/Users/LMT/Documents/University/Nam4/N4_HK1/DACN/Markie`.
+- `git worktree list --porcelain` chỉ đăng ký checkout này. Nhánh ban đầu là `main` tại `85957fe3542e551afa1054e6e958b24f4901f332`. `git branch -avv` không có `feature/ai-post-moderation` trong local hoặc remote-tracking refs đang lưu; không fetch/push.
+- Đã kiểm tra `git status`, danh sách file untracked, `git log --all -- <đường dẫn tài liệu/source/test moderation>` và reflog. Các kết quả Task 00–02 dưới đây có thật trên filesystem hiện tại nhưng chưa có commit trong lịch sử các refs đã kiểm tra. Không cần khôi phục từ checkout khác hoặc tự viết lại kết quả task cũ.
+- Đã tạo nhánh bằng `git switch -c feature/ai-post-moderation` từ HEAD hiện tại, giữ nguyên thay đổi. SHA-256 của cả 19 file tài liệu/source/test/YAML trước và ngay sau chuyển nhánh giống nhau. Sau đó chỉ bổ sung mục bàn giao này; không thay kết quả các task cũ.
+- Commit tập hợp: **`6a47f6a6cfd67d33adebde0245cbadc653f7128c`** — `feat(moderation): preserve task 00-01 results and implement task 02 configuration`. Commit chứa đúng 19 file: 15 tài liệu, 2 lớp Java cấu hình, 1 lớp test, 1 YAML. Không chứa artifact `target`, file tạm hoặc thay đổi không liên quan.
+- Nhánh hiện tại và nhánh dùng cho công việc tiếp theo: **`feature/ai-post-moderation`**. Giữ nguyên `main` tại commit ban đầu; nhánh feature kế thừa đầy đủ lịch sử đó. Không reset, Git clean, force checkout, rebase hoặc xóa nhánh/worktree.
+
+### Kết quả từng task đã xác minh
+
+| Phần | File kết quả trên nhánh feature | Trạng thái / phần còn thiếu |
+|---|---|---|
+| Bộ hướng dẫn | `docs/ai-moderation/00-START-HERE.md` đến `10-TASK-08-ACCEPTANCE.md` (11 file) | Giữ nguyên tài liệu giao việc, không đồng nghĩa các task tiếp theo đã được thực hiện |
+| Task 00 | `docs/ai-moderation/environment-report.md` | Báo cáo có đủ; baseline toàn luồng vẫn chưa đạt do các chặn đã ghi. Không có source thay đổi thuộc Task 00 theo báo cáo |
+| Task 01 | `docs/ai-moderation/policy-and-cases.md` | Hoàn thành tài liệu; 20 ca tiếng Việt và 15 ca mock là đặc tả, chưa phải kết quả gọi AI. Không có source thay đổi thuộc Task 01 theo tài liệu |
+| Task 02 | 6 file trong bảng file tạo/sửa ở đầu báo cáo | Hoàn thành cấu hình/bean/test/tài liệu; chưa full context/E2E hoặc API AI thật |
+
+Không thiếu artifact nào được các báo cáo Task 00/01 công bố. Không có báo cáo handoff riêng cho Task 00/01 trong checkout; dùng chính `environment-report.md` và phần bàn giao của `policy-and-cases.md`, giữ nguyên nội dung gốc.
+
+### Xác minh lại trên nhánh feature
+
+Từ `post/post`, với JDK 21/Maven cache như phần kiểm thử:
+
+```powershell
+& $taskMaven -o -B "-Dmaven.repo.local=$env:USERPROFILE\.m2\repository" '-Dtest=ModerationConfigurationTest' test
+```
+
+Kết quả lúc **13:27:55 (Asia/Saigon)**: exit 0, **BUILD SUCCESS; 15 tests, 0 failures, 0 errors, 0 skipped**. Đây là lần chạy lại unit test trên nhánh feature, không chạy `clean`; compiler báo classes đã cập nhật. Kết quả clean compile ở lần Task 02 trước vẫn được ghi riêng ở trên. Các WARN context của ca cấu hình sai là hành vi dự kiến. Không chạy lại full context hoặc đụng dữ liệu/hạ tầng.
+
+`git diff --cached --check` trước commit đạt. Đã rà soát whitelist file, giá trị key giả/placeholder và tìm mẫu API key/private key/JWT trong tài liệu và Java mới; không phát hiện secret. Sau commit tập hợp `git status --short` rỗng. Phần bổ sung bàn giao này được commit riêng với tiêu đề `docs(moderation): record branch consolidation and verification`; không để lại thay đổi chưa commit khi hoàn tất. Chỉ các artifact build bị Git ignore vẫn nằm ngoài commit.
+
+Task 04 và các task tiếp theo chưa thực hiện. Không push hoặc triển khai.
