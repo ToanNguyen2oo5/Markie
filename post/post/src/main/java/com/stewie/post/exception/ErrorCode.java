@@ -26,7 +26,17 @@ public enum ErrorCode {
             1016, "Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
     POST_CONTENT_REQUIRED(1017, "Vui lòng nhập nội dung bài viết.", HttpStatus.BAD_REQUEST),
     POST_CONTENT_TOO_LONG(
-            1018, "Nội dung bài viết không được vượt quá 500 ký tự.", HttpStatus.BAD_REQUEST);
+            1018, "Nội dung bài viết không được vượt quá 500 ký tự.", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_REQUIRED(1019, "Vui lòng chọn một ảnh.", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_TOO_LARGE(1020, "Ảnh không được vượt quá 5 MiB.", HttpStatus.PAYLOAD_TOO_LARGE),
+    POST_IMAGE_INVALID(
+            1021, "Ảnh không hợp lệ. Chỉ hỗ trợ ảnh JPEG hoặc PNG tĩnh.", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_DIMENSIONS_EXCEEDED(
+            1022, "Kích thước ảnh vượt giới hạn cho phép.", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_COUNT_EXCEEDED(
+            1023, "Mỗi bài viết chỉ được đính kèm một ảnh.", HttpStatus.BAD_REQUEST),
+    POST_MEDIA_STORAGE_UNAVAILABLE(
+            1024, "Chưa thể lưu ảnh. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

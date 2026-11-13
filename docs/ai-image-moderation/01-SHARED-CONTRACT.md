@@ -8,11 +8,47 @@ File Service có `/media/upload`, `/media/download/{fileName}` và storage đĩa
 
 Agent phải kiểm tra lại checkout hiện tại trước khi dựa vào mô tả. Không sửa luồng avatar hoặc biến upload chung thành cơ chế chứng nhận ảnh đã duyệt.
 
+## Quyết định I02 đã chốt
+
+Chi tiết ràng buộc: [api-contract.md](api-contract.md), ma trận kiểm thử:
+[image-test-cases.md](image-test-cases.md). I02 chỉ thêm enum và test response qua
+advice hiện có, chưa thêm DTO image/validator/handler multipart/endpoint hoạt động.
+
+- URL ngoài gồm context: `/post/create-with-image` tương ứng mapping controller
+  `/create-with-image`; File context `/file`, tạo `/internal/post-media`, xóa
+  `/internal/post-media/{id}`, đọc công khai `/post-media/{id}`. Gateway giữ context.
+- PostResponse của bài cũ sau I06 trả `image: null` theo mặc định DTO hiện tại;
+  frontend vẫn chấp nhận field vắng. Envelope NON_NULL không tự áp dụng cho DTO con.
+- Multipart đúng một content text và một image file, không nhận part ngoài hợp
+  đồng; thiếu/rỗng file → 1019, nhiều image → 1023, sai cấu trúc → 1021. Giới hạn
+  bao gồm biên: 5.242.880 B, mỗi chiều 6.000 px, tổng 16.000.000 px. MIME/extension
+  khai báo không quyết định: parser xác nhận JPEG/PNG tĩnh thì dùng MIME thực;
+  bytes giả định dạng/corrupt/động bị từ chối.
+- Chốt mã 1019–1024 theo bảng dưới, không còn dự kiến; đã tìm toàn bộ code repo
+  trước khi thêm, chưa có mã trùng. Giữ nguyên 1015–1018.
+- Header nội bộ cố định `X-Post-Media-Internal-Secret` lấy từ
+  `POST_MEDIA_INTERNAL_SECRET`; thiếu/blank cấu hình phải fail startup I05/I06.
+  JWT relay chỉ cho client File create/delete; owner là JWT sub. Không lấy owner
+  từ caller và không dùng key OpenAI làm credential nội bộ.
+- File create nhận một part `image`, trả HTTP 200/envelope code 1000/result đúng
+  schema image; delete owner-only HTTP 204 idempotent; public GET trả raw bytes.
+  Kho đĩa và collection metadata post-media riêng, generic/Saga không truy cập.
+- Tạo trước Post ID để xác minh save không rõ kết quả. Không xóa nếu read vắng
+  nhưng write có thể còn hoàn tất, read lỗi hoặc tham chiếu không khớp; giữ ảnh
+  để đối soát. Chỉ delete bù khi chắc chắn save thất bại và không có tham chiếu.
+
+Lý do làm rõ từ checkout: File hiện giới hạn tổng request 5MB, bằng giới hạn file,
+không đủ overhead của ảnh 5 MiB; I05 nâng tổng lên **6.291.456 B (6 MiB)**, giữ
+file 5.242.880 B. Post chưa cấu hình multipart; Gateway chưa có RequestSize,
+chưa public route đọc post-media/chặn `/file/internal/**`; I05/I06 phải bổ sung
+và kiểm thử trước mở route. Vite chưa proxy `/file`, nên dùng URL tuyệt đối do
+backend sinh. Các thay đổi này là hợp đồng cho task sau, I02 chưa đổi runtime.
+
 ## Phạm vi và giới hạn
 
 - Bài chỉ văn bản vẫn dùng `POST /post/create` JSON như cũ.
 - Bài có ảnh: tối đa 1 ảnh, văn bản bắt buộc 1–500 đơn vị UTF-16, không chỉ khoảng trắng.
-- Chỉ JPEG/PNG tĩnh; tối đa **5 MiB = 5.242.880 byte**. Giới hạn mỗi chiều 6.000 pixel, tổng tối đa 16.000.000 pixel. Đây là giới hạn sản phẩm đề xuất, không phải giới hạn nhà cung cấp.
+- Chỉ JPEG/PNG tĩnh; tối đa **5 MiB = 5.242.880 byte**. Giới hạn mỗi chiều 6.000 pixel, tổng tối đa 16.000.000 pixel. Đây là giới hạn sản phẩm đã chốt, không phải giới hạn nhà cung cấp.
 - Không SVG, GIF, WebP, APNG, video, URL tùy ý, nhiều ảnh, OCR hay cập nhật bài.
 - File phải được xác nhận định dạng bằng signature và parser thực tế; đọc kích thước bằng metadata trước khi decode toàn ảnh. Từ chối ảnh lỗi, đa khung/động và file giả mạo. Giới hạn request trước khi đọc Base64; không tin riêng extension/MIME.
 - Không crop/resize nội dung ảnh sau kiểm duyệt. Ảnh gửi AI là đúng byte ảnh được lưu/hiển thị. Nếu cần chuẩn hóa ảnh trong tương lai thì phải duyệt chính phiên bản cuối.
@@ -24,14 +60,14 @@ Route mới `POST /post/create-with-image`, `multipart/form-data`:
 - Part `content`: trường văn bản thông thường, binding bằng @RequestParam hoặc @ModelAttribute có validation rõ ràng.
 - Part `image`: đúng một file bắt buộc. Reject nhiều part image; không nhận imageUrl/fileId từ client để bỏ qua kiểm duyệt.
 - JWT như route cũ. Frontend dùng FormData, không tự đặt Content-Type vì browser cần boundary.
-- Success code 1000, PostResponse thêm `image` nullable: `{fileId,url,contentType,size,width,height}`. Bài cũ/thuần văn bản: null hoặc không có field này theo quy tắc serialize hiện có.
+- Success HTTP 200/code 1000, PostResponse thêm `image` nullable: `{fileId,url,contentType,size,width,height}`. Bài cũ/thuần văn bản trả `image: null` sau I06 theo mặc định DTO hiện có; frontend chấp nhận cả field vắng để tương thích response cũ.
 - URL do backend tạo, frontend không tự ghép filename gốc hoặc local path.
 
 ## Mã lỗi
 
 Giữ 1015/422 cho nội dung/ảnh bị đánh dấu; 1016/503 cho provider không dùng được. Giữ validation content 1017/1018. Không dùng lỗi ảnh để thay ý nghĩa mã cũ.
 
-| Enum mới | Mã dự kiến | HTTP | Thông báo |
+| Enum mới | Mã đã chốt | HTTP | Thông báo |
 |---|---:|---:|---|
 | POST_IMAGE_REQUIRED | 1019 | 400 | Vui lòng chọn một ảnh. |
 | POST_IMAGE_TOO_LARGE | 1020 | 413 | Ảnh không được vượt quá 5 MiB. |
@@ -40,7 +76,7 @@ Giữ 1015/422 cho nội dung/ảnh bị đánh dấu; 1016/503 cho provider kh�
 | POST_IMAGE_COUNT_EXCEEDED | 1023 | 400 | Mỗi bài viết chỉ được đính kèm một ảnh. |
 | POST_MEDIA_STORAGE_UNAVAILABLE | 1024 | 503 | Chưa thể lưu ảnh. Vui lòng thử lại sau. |
 
-I02 kiểm tra trùng mã ở checkout thật trước khi chốt. Phải xử lý lỗi multipart vượt giới hạn ở tầng framework để có HTTP 413/response rõ ràng; không để catch-all biến thành lỗi 400/9999. Tổng multipart request đề xuất 6 MiB, file 5 MiB; kiểm tra cấu hình Gateway/proxy và File Service tương ứng. Request vượt tổng giới hạn có thể chỉ trả thông báo 413 chung an toàn, không bắt buộc suy ra chính xác part vi phạm.
+I02 đã kiểm tra trùng mã ở checkout thật. I06 phải xử lý lỗi multipart vượt giới hạn ở tầng framework để có HTTP 413/1020; không để catch-all biến thành lỗi 400/9999. Tổng multipart request chốt 6 MiB, file 5 MiB; kiểm tra cấu hình Gateway/proxy và File Service tương ứng ở I05/I06. Request vượt tổng giới hạn ở Gateway/proxy có thể chỉ trả thông báo 413 chung an toàn, không bắt buộc suy ra chính xác part vi phạm.
 
 ## Kiểm duyệt
 

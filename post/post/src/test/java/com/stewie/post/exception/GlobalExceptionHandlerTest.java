@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stewie.post.controller.PostController;
 import com.stewie.post.service.PostService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -11,9 +12,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -66,6 +69,36 @@ class GlobalExceptionHandlerTest {
                 Arguments.of(ErrorCode.USER_NOT_EXISTED, 400, 1012, "user not found"),
                 Arguments.of(ErrorCode.POST_NOT_EXISTED, 400, 1013, "post not found"),
                 Arguments.of(ErrorCode.COMMENT_NOT_EXISTED, 400, 1014, "comment not found"));
+    }
+
+    static Stream<Arguments> imageErrors() {
+        return Stream.of(
+                Arguments.of(ErrorCode.POST_IMAGE_REQUIRED, 400, 1019, "Vui lòng chọn một ảnh."),
+                Arguments.of(ErrorCode.POST_IMAGE_TOO_LARGE, 413, 1020, "Ảnh không được vượt quá 5 MiB."),
+                Arguments.of(ErrorCode.POST_IMAGE_INVALID, 400, 1021,
+                        "Ảnh không hợp lệ. Chỉ hỗ trợ ảnh JPEG hoặc PNG tĩnh."),
+                Arguments.of(ErrorCode.POST_IMAGE_DIMENSIONS_EXCEEDED, 400, 1022,
+                        "Kích thước ảnh vượt giới hạn cho phép."),
+                Arguments.of(ErrorCode.POST_IMAGE_COUNT_EXCEEDED, 400, 1023,
+                        "Mỗi bài viết chỉ được đính kèm một ảnh."),
+                Arguments.of(ErrorCode.POST_MEDIA_STORAGE_UNAVAILABLE, 503, 1024,
+                        "Chưa thể lưu ảnh. Vui lòng thử lại sau."));
+    }
+
+    @ParameterizedTest
+    @MethodSource("imageErrors")
+    void returnsImageContractWithoutInternalDetails(ErrorCode error, int httpStatus, int code, String message)
+            throws Exception {
+        var exception = new AppException(error);
+        exception.initCause(new RuntimeException(
+                "internal-secret=fake-test-secret; ownerId=fake-owner; path=/fake/storage/image.png"));
+        assertErrorResponse(exception, httpStatus, code, message);
+    }
+
+    @Test
+    void errorCodesAreUniqueWithinPostService() {
+        assertThat(Arrays.stream(ErrorCode.values()).map(ErrorCode::getCode).toList())
+                .doesNotHaveDuplicates();
     }
 
     @ParameterizedTest
