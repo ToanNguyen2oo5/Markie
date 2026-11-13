@@ -1,5 +1,49 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## V16–V19 hoàn tất, UI chờ kết quả — từ `c1fe162`
+
+Ngày 13/11/2026; nhánh giữ nguyên `feature/ai-post-moderation`, HEAD đầu phiên
+`c1fe162`, working tree sạch, không tìm thấy AGENTS.md áp dụng. Đã đọc báo cáo,
+handoff và policy-and-cases trước khi sửa. **Chưa nghiệm thu toàn luồng.**
+
+- Bổ sung bốn fixture tổng hợp ở
+  `post/post/src/test/resources/moderation/vietnamese-acceptance-fixtures.json`;
+  có thể đọc/tái sử dụng từ commit. Không người thật, không phương pháp gây hại,
+  không tường thuật kích dục. Giữ nhãn kỳ vọng chặn của V16–V19, không đổi policy.
+- `node post/post/target/task08-v16-v19-check.cjs`: exit 0,
+  **15:51:33–15:51:53 +07**; run ID `MARKIEV16V191794559893967`.
+  JWT Keycloak authorization code + PKCE và hạ tầng thật, không stub.
+- **V16/V17/V18/V19 đều 422/1015**, thời gian API lần lượt 711/454/540/515 ms;
+  **0 bài MongoDB, 0 post event Kafka** mỗi ca; tổng tài khoản thử cũng 0 bài/event,
+  Elasticsearch posts count 0. Đọc bổ sung xác nhận Kafka topic thực sự đọc được,
+  không nhầm lỗi consumer với không phát event. Hash/độ dài fixture trong báo cáo.
+- Cổng 8083 vẫn PID **26776**, bắt đầu **15:34:37 +07**; không đọc key/env/command
+  line, không restart/dừng/đổi endpoint. Quan sát TCP HTTPS khớp DNS OpenAI,
+  không thấy remote stub trong cửa sổ lấy mẫu; không đọc payload/header.
+- Cả 20 ID đã được quan sát qua hai lượt, 14 cho qua/6 chặn; **giữ nguyên V12
+  chặn nhầm và V20 cho qua nhầm**, không chạy lại để chọn kết quả hoặc thay nhãn.
+  Tích hợp mapping/side effect đúng khác với chất lượng phân loại của mô hình.
+  Runtime model override/model ID upstream vẫn chưa xác minh độc lập.
+
+### UI chưa đạt — chờ người dùng
+
+Thử Chrome phiên này vẫn báo `The browser access host is unavailable`. Đã gửi
+checklist bất đồng bộ, chưa nhận kết quả người dùng lúc ghi báo cáo. File
+[ui-manual-checklist.md](../ui-manual-checklist.md) có bốn mục: chờ/khóa thao tác,
+chống gửi lặp, bị chặn giữ nội dung, sửa/gửi lại thành công. **Không đánh dấu UI
+đạt trước khi nhận và rà soát kết quả U1–U4**; nếu không quan sát được thì để chưa thử.
+
+### File và trạng thái
+
+Sửa README, policy-and-cases (cột thực tế, giữ nhãn kỳ vọng), acceptance-report và
+handoff; thêm fixture JSON và checklist UI. Không đổi mã/cấu hình ứng dụng.
+Không chạy lại 96 test/build/lint; đó là kết quả lịch sử. Đã kiểm tra cấu trúc
+fixture JSON, nhãn/độ dài/hash và diff. Script tạm đã dọn, observer/consumer đã
+kết thúc; không dừng các dịch vụ đang chạy. Chỉ thêm tài khoản/profile tổng hợp,
+không có post mới từ bốn ca và không xóa dữ liệu cũ. Commit được báo ở phản hồi
+cuối; không push/merge/triển khai. Phần còn thiếu: UI chờ người dùng và đánh giá
+sản phẩm đối với hai sai lệch mô hình đã ghi nhận.
+
 ## Cập nhật AI thật, giữ Post PID 26776 — 13/11/2026
 
 **API tích hợp với provider thật đã chạy, có bằng chứng cả cho qua/chặn. Chưa

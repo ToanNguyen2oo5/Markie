@@ -1,5 +1,112 @@
 # Báo cáo nghiệm thu Task 08
 
+## Hoàn tất V16–V19, UI chờ người dùng — tiếp tục từ `c1fe162`
+
+**Đã chạy bổ sung V16–V19 với AI thật; cả bốn ca trả 422/1015, không lưu bài hoặc
+phát post event. UI chưa nghiệm thu: Chrome vẫn bị chặn, đang chờ kết quả
+checklist thủ công của người dùng. Giữ nguyên ghi nhận V12 chặn nhầm và V20
+cho qua nhầm.** Các mục tiếp theo là lịch sử, không thay thế cập nhật này.
+
+### Phạm vi và fixture bổ sung
+
+Ngày 13/11/2026, checkout `feature/ai-post-moderation`, HEAD đầu phiên `c1fe162`,
+working tree sạch. Đã đọc báo cáo/handoff Task 08 và định nghĩa V16–V19 trong
+policy-and-cases; không có AGENTS.md áp dụng được tìm thấy trong repository hoặc
+các thư mục cha. Không thay kỳ vọng, chính sách, thuật toán hoặc mã ứng dụng.
+
+Bổ sung fixture có thể đọc lại từ commit tại
+[vietnamese-acceptance-fixtures.json](../../post/post/src/test/resources/moderation/vietnamese-acceptance-fixtures.json).
+File chỉ chứa mẫu tổng hợp cho nghiên cứu đánh giá, không có người thật/dữ liệu
+cá nhân; không phải nội dung được tán thành hoặc khuyến nghị. V16 là quấy rối
+nghiêm trọng người nhận hư cấu; V17 loại trừ theo tôn giáo, không chép lời miệt
+thị chi tiết; V18 cổ vũ tự hại, không phương pháp; V19 mô tả lâm sàng hoạt động
+tình dục giữa hai người 30 tuổi đồng thuận, không tường thuật kích dục. Bốn nhãn
+kỳ vọng **chặn** được giữ từ Task 01, không chỉnh fixture sau khi thấy kết quả.
+Không chép toàn văn mẫu nhạy cảm vào báo cáo/checklist.
+
+### Tiến trình, lệnh và kết quả thực tế
+
+Cổng 8083 vẫn thuộc **PID 26776**, java bắt đầu **15:34:37 +07**. Không đọc/in
+key, không đọc env/command line của process, không restart/dừng hoặc đổi endpoint
+về stub. Dùng Gateway/Profile/Keycloak/MongoDB/Kafka/Elasticsearch thật đang chạy.
+JWT qua authorization code + PKCE, tài khoản tổng hợp mới; profile sync 200/1000.
+Không sửa client/realm, không in token, cookie, mật khẩu hoặc raw provider response.
+
+Lệnh `node post/post/target/task08-v16-v19-check.cjs`, exit 0, chạy
+**15:51:33–15:51:53 +07**, run ID `MARKIEV16V191794559893967`.
+Đây là script tạm gọi API, không có server stub; đã dọn sau kiểm tra. Fixture
+JSON được giữ trong source để tái sử dụng; không tuyên bố script tạm còn có thể
+chạy lại từ commit.
+
+| ID | Kỳ vọng | HTTP/code | Thời gian API | MongoDB / post Kafka event |
+|---|---|---|---:|---:|
+| V16 | Chặn | 422/1015 | 711 ms | 0 / 0 |
+| V17 | Chặn | 422/1015 | 454 ms | 0 / 0 |
+| V18 | Chặn | 422/1015 | 540 ms | 0 / 0 |
+| V19 | Chặn | 422/1015 | 515 ms | 0 / 0 |
+
+Hash SHA-256 UTF-8 để đối chiếu đúng mẫu đã gửi, không phải placeholder nhóm:
+
+| ID | Độ dài UTF-16 | SHA-256 |
+|---|---:|---|
+| V16 | 120 | `00d38c7636df69681735064643641f0711a708b834f5a666925cd217ef0b88f1` |
+| V17 | 101 | `3336a1abe75a28af57e670f22b0529d8e98a1c5718c78ac2c3f2cacd8887aaa5` |
+| V18 | 65 | `083387c5bf246fa639e8dd8e98551d715e871750aa10480c1178e62524205915` |
+| V19 | 104 | `13360b8ea8635c5b14c368d2a0ad440d80ccaff7a9f15b3594db6b5c0cbfba5f` |
+
+Truy vấn MongoDB trực tiếp theo tài khoản thử và exact-content từng fixture:
+mỗi ca 0 bài, tổng tài khoản 0 bài. Console consumer Kafka thật đọc được topic
+`post.sync.events` có các event hiện hữu, lọc tài khoản thử trong bộ nhớ: 0 event
+cho từng ca và tổng 0. Đã chạy bước đọc bổ sung để phân biệt “topic đọc được,
+user không có event” với lỗi công cụ/không đọc được topic. Elasticsearch posts
+`_count` theo user thử cũng 0; không dùng việc chưa có kết quả search tức thì làm
+bằng chứng duy nhất không lưu. Không in dữ liệu các tài khoản khác.
+
+Quan sát metadata TCP PID 26776 trong 40 giây: HTTPS tới 172.66.0.243:443, trùng
+DNS api.openai.com lúc kiểm tra; không thấy kết nối remote 18908 trong cửa sổ
+lấy mẫu. Kết hợp đường gọi mã và API response hợp lệ, phù hợp với provider thật
+theo cấu hình người dùng. Không đọc TLS payload/header/key. Model mặc định source
+`omni-moderation-latest`; runtime override/model ID provider vẫn chưa được xác
+minh độc lập vì API tạo bài không trả metadata này.
+
+**Bốn ca mới đúng nhãn kỳ vọng, 0 lỗi kỹ thuật provider.** Cộng với phiên trước,
+20 ID đã có quan sát thực tế qua hai lượt: 14 cho qua, 6 chặn. **V12 chặn nhầm,
+V20 cho qua nhầm vẫn giữ nguyên**; không retry/chọn lại kết quả hoặc đổi nhãn.
+Mapping HTTP/side effect tích hợp đúng không đồng nghĩa mô hình phân loại hoàn
+hảo. Một mẫu mỗi nhóm và model snapshot chưa xác minh không đủ suy rộng tỷ lệ
+chất lượng cho mọi nội dung tiếng Việt.
+
+### UI: đang chờ, không đánh dấu đạt
+
+Đã gọi trực tiếp công cụ `createBrowserTab("chrome", "http://localhost:3000", ...)`
+phiên này; lỗi **`The browser access host is unavailable`**, chưa có trang/tab để
+thao tác. Đã gửi người dùng checklist qua công cụ hỏi bất đồng bộ; chưa nhận
+kết quả tại thời điểm cập nhật này. Không coi API hoặc fixture mới là bằng chứng UI.
+
+[Checklist ngắn U1–U4](ui-manual-checklist.md) yêu cầu:
+
+1. Thấy trạng thái chờ và khóa textarea/Đăng/đóng/backdrop trong request.
+2. Bấm nhanh nhiều lần chỉ có 1 request và 1 bài được thêm.
+3. Thực sự nhận 422/1015 thì giữ modal/nội dung, không thêm bài vào feed.
+4. Sửa bản nháp thành lời chào và gửi lại thành công; mở composer lại trống.
+
+Nếu quá nhanh để quan sát hoặc chưa có response bị chặn thì ghi chưa thử, không
+suy ra đạt. Không đổi key/endpoint hoặc tạo lỗi trên process người dùng. Chỉ cập
+nhật UI thành đạt **sau khi nhận và rà soát kết quả người dùng**; còn chờ cả U1–U4.
+
+### Bàn giao và dọn môi trường
+
+Chỉ cập nhật fixture test JSON và tài liệu; không sửa Java/frontend/config,
+không chạy lại unit/context suite/build/lint vì không đổi logic ứng dụng. 96/96
+vẫn là kết quả lịch sử, không phải vừa chạy lại. Kiểm tra JSON, nhãn/kích thước
+fixture, đối chiếu hash và `git diff --check` được thực hiện trước commit.
+
+Script kiểm tra/đọc bổ sung và observer đã kết thúc, source script tạm đã dọn.
+Giữ tài khoản/profile tổng hợp mới; không có bài mới từ bốn ca này, không xóa
+hoặc reset dữ liệu cũ. Giữ nguyên PID 26776 và dịch vụ người dùng để tiếp tục thử
+UI. Không push/merge/triển khai. **Kết luận vẫn chưa nghiệm thu toàn luồng**:
+UI đang chờ bằng chứng, và hai sai lệch mô hình cần người phụ trách xem xét.
+
 ## Cập nhật AI thật trên Post PID 26776 — 13/11/2026
 
 **Đã kiểm tra API với JWT, MongoDB/Kafka/search thật và lời gọi kiểm duyệt qua
