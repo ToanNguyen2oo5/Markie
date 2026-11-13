@@ -1,5 +1,136 @@
 # Báo cáo nghiệm thu Task 08
 
+## Cập nhật AI thật trên Post PID 26776 — 13/11/2026
+
+**Đã kiểm tra API với JWT, MongoDB/Kafka/search thật và lời gọi kiểm duyệt qua
+Post Service do người dùng cấu hình key. Chưa nghiệm thu toàn luồng: UI chưa
+được kiểm tra, V16–V19 chưa có fixture cụ thể, và có cả chặn nhầm/cho qua nhầm
+trong bộ ca đã chạy.** Các mục tiếp theo là lịch sử các phiên trước.
+
+### Bảo toàn tiến trình và thông tin xác thực
+
+- Nhánh `feature/ai-post-moderation`, HEAD đầu phiên `7fba3fa`, working tree sạch;
+  đã đọc báo cáo, handoff, policy-and-cases và hướng dẫn áp dụng; không tìm thấy
+  AGENTS.md trong repository hoặc các thư mục cha. Không thay mã sản phẩm.
+- Xác minh cổng 8083 có OwningProcess **26776**, process java bắt đầu lúc
+  **15:34:37 +07**. Không dừng/restart tiến trình, không đọc command line/env/key
+  của nó, không ghi đè key/base URL/model và không chuyển về stub.
+- Gateway/Profile/Search/frontend và hạ tầng đang có sẵn được giữ nguyên. Stub
+  từ phiên chạy thủ công còn cổng 18908, nhưng script phiên này **không gọi stub**
+  hoặc gửi key thật tới đó.
+- Tạo một tài khoản tổng hợp mới; JWT thật từ Keycloak qua authorization code +
+  PKCE của markie_webapp, profile sync 200/1000. Không thay client/realm, không bật
+  direct grants. Mật khẩu ngẫu nhiên/JWT/cookie/code xác thực chỉ trong bộ nhớ,
+  không in hoặc đưa vào báo cáo/Git. Không truy cập API key OpenAI.
+
+### Thực thi và bằng chứng gọi AI
+
+Lệnh từ gốc repository: `node post/post/target/task08-openai-check.cjs`, chạy
+**15:40:32–15:41:20 +07**, exit 0. Run ID tổng hợp
+`MARKIEOPENAI1794559232222`. Script tạm không có server stub, chỉ gọi API hiện có,
+đọc DB/event/search; đã dọn sau khi lấy kết quả. Bảng kết quả dưới đây là bằng
+chứng phiên này, không biến script đã dọn thành bộ test có thể chạy lại từ commit.
+
+Không dùng việc service khởi động thành công để kết luận key hoạt động. Thực tế:
+
+- POST qua Gateway `http://localhost:8888/post/create` với JWT hợp lệ đã nhận
+  200/1000 và 422/1015; mã nguồn hiện tại chỉ sinh các nhánh này sau khi đọc
+  flagged boolean hợp lệ. **16 quyết định, 0 lỗi 503/1016 hoặc HTTP bất ngờ.**
+- Quan sát chỉ metadata TCP của PID 26776 trong khoảng 55 giây bao trùm request:
+  có kết nối remote **172.66.0.243:443**; DNS api.openai.com lúc kiểm tra trả về
+  địa chỉ này (và 162.159.140.245). Không quan sát thấy remote port 18908 của PID
+  đó trong khoảng lấy mẫu. Không đọc header, TLS payload hoặc key. Metadata TCP
+  là bằng chứng bổ trợ đường ra HTTPS, không phải bản ghi HTTP upstream.
+- Kết hợp kết quả API, đường gọi trong mã và metadata mạng phù hợp với việc
+  Post gọi provider OpenAI thật theo cấu hình người dùng. Không có lỗi kỹ thuật
+  cần suy đoán là key sai/quota lỗi. Không đọc/in raw response OpenAI.
+- Model mặc định trong cấu hình repository là `omni-moderation-latest`.
+  **Chưa xác minh độc lập model override của process hoặc model snapshot trả về**:
+  API tạo bài không trả metadata provider, và phiên này không đọc cấu hình/key
+  runtime. Không trình bày tên mặc định như thể đã thu được model ID upstream.
+
+### Bộ ca tiếng Việt: kết quả quan sát một lần
+
+V01–V14 dùng **nguyên văn fixture Task 01**, không thêm marker vào content để tránh
+đổi ngữ cảnh. Tài khoản tổng hợp riêng giúp lọc dữ liệu/event mà không sửa câu.
+V15 dùng một câu đe dọa trực tiếp tổng hợp, không danh tính thật/hướng dẫn gây hại;
+V20 là cùng câu bỏ dấu tiếng Việt, giữ nguyên nghĩa. Không chép hai câu này vào
+báo cáo. Hash SHA-256 UTF-8 để đối chiếu fixture:
+
+- V15: `c8ee5f0dd2cc83e527fb05e1c9b361288526ecef2367972c553d3f33030fa707`.
+- V20: `34daa34a507eb0b59ba5c083f5af8a8ceb67a7fac08896e92b5740bd8b4bbe3a`.
+- Mỗi fixture mới dài 28 đơn vị UTF-16. Đây là fixture phiên nghiệm thu bổ sung,
+  không phải câu đã có sẵn ở các placeholder V15/V20 trong tài liệu Task 01.
+
+| ID | Nhãn kỳ vọng | HTTP/code thực tế | MongoDB / Kafka | Đánh giá |
+|---|---|---|---|---|
+| V01 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V02 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V03 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V04 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V05 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V06 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V07 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V08 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V09 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V10 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V11 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V12 | Cho qua | **422/1015** | **0 / 0** | **Dấu hiệu chặn nhầm**: fixture tường thuật không cổ vũ bạo lực |
+| V13 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V14 | Cho qua | 200/1000 | 1 / 1 | Đúng kỳ vọng |
+| V15 | Chặn | **422/1015** | **0 / 0** | Đúng kỳ vọng với fixture mới |
+| V20 | Chặn như V15 | **200/1000** | **1 / 1** | **Dấu hiệu cho qua nhầm** ở biến thể không dấu |
+| V16–V19 | Chặn (nhãn nhóm) | Chưa chạy | Không áp dụng | Task 01 chưa có mẫu cụ thể; không gửi placeholder như mẫu thật |
+
+Tổng: **16 ca thực thi, 14 cho qua, 2 chặn, 0 lỗi kỹ thuật; 1 chặn nhầm và 1 cho
+qua nhầm so với nhãn đánh giá**. Không suy rộng chất lượng mô hình từ mẫu nhỏ,
+không báo 16/16 đúng ngữ nghĩa. Ứng dụng vẫn tuân thủ hợp đồng flagged của
+provider; đây là khác biệt giữa mapping tích hợp đúng và chất lượng phân loại.
+Không retry để chọn kết quả mong muốn, không đổi policy/model/ngưỡng/ngoại lệ.
+
+### Đối chiếu dữ liệu, sự kiện và search
+
+- Truy vấn MongoDB trực tiếp theo user_id của **tài khoản tổng hợp mới** và
+  exact-content từng ca: đúng 14 bài; V12/V15 mỗi ca 0 bản ghi. Không dựa vào
+  tìm kiếm tức thì để kết luận không lưu.
+- Đọc topic `post.sync.events` thật bằng Bitnami console consumer từ đầu, timeout
+  5 giây; chỉ lọc trong bộ nhớ các event của user thử: **14 event**, mỗi bài đạt
+  đúng 1 event có cùng postId/content; V12/V15 **0 event**. Không in event hoặc
+  dữ liệu của tài khoản khác.
+- Cả 14 bài đạt có content nguyên văn trong response tạo bài, MongoDB, event,
+  `/post/my-posts` và Elasticsearch `_doc/<postId>`. Search API qua Gateway trả
+  200 và tìm được đúng postId từng bài. Không quan sát được raw input provider
+  ở mạng HTTPS; việc gửi nguyên content tới provider đã có source/unit test
+  phiên trước, không được mô tả như đã bắt payload OpenAI phiên này.
+- Poll Elasticsearch tối đa 30 giây, thực tế tất cả đã có khi kiểm tra, vòng
+  đối chiếu hoàn tất trong 375 ms sau bộ request. Đây không phải độ trễ Kafka
+  toàn trình. Thời gian request API 394–1614 ms trong 16 mẫu, không là cam kết SLA.
+- Giữ lại tài khoản/profile và 14 bài/event/search document **tổng hợp mới** để
+  kiểm tra; không xóa/reset hoặc chỉnh dữ liệu có sẵn. V20 được lưu vì provider
+  cho qua, không tự gỡ bài để làm kết quả đánh giá đẹp hơn.
+
+### Phần còn thiếu và trạng thái bàn giao
+
+UI **chưa được kiểm tra trong phiên này**; người dùng chưa cung cấp kết quả
+checklist thủ công, và các lần thử công cụ browser trước đều bị host unavailable.
+Giữ checklist bên dưới để thử success/1015/1016, bản nháp/sửa/gửi lại, khóa thao
+tác/chống gửi lặp, refresh token và biên UTF-16. Với provider thật, chuỗi `[BLOCK]`
+không còn là điều kiện giả lập bảo đảm bị chặn; không dùng quy tắc stub để kết
+luận chất lượng OpenAI. Không cố gây lỗi OpenAI bằng thay key/endpoint của PID
+26776 để thử 1016; bằng chứng lỗi kỹ thuật từ các phiên stub vẫn được phân tầng.
+
+V16–V19 cần fixture tổng hợp cụ thể, phù hợp để đánh giá thêm. Chưa có model ID
+upstream để ghim snapshot, và hai sai lệch V12/V20 cần được người phụ trách sản
+phẩm xem xét; không tự sửa chính sách nhằm ép nhãn. Chưa tuyên bố nghiệm thu
+toàn luồng hoặc chất lượng kiểm duyệt mọi nội dung tiếng Việt đạt.
+
+Không sửa Java/frontend/config; không chạy lại suite 96 test/build/lint vì phiên
+này chỉ cập nhật tài liệu. Các kết quả đó vẫn thuộc lần kiểm tra `7fba3fa` ở phần
+lịch sử, không phải test vừa chạy lại. Script tạm đã dọn, observer TCP/consumer
+đã kết thúc; không tạo hay thay tiến trình Post. PID 26776 và thời điểm bắt đầu
+được xác minh lại cuối phiên, giữ nguyên dịch vụ hiện có để người dùng thử UI.
+Không push/merge/triển khai. Commit cập nhật tài liệu được nêu trong phản hồi cuối.
+
 ## Cập nhật tiếp tục từ `191c2f3` — 13/11/2026
 
 **Kết luận hiện tại: đã sửa lỗi khởi động MongoDB và kiểm tra tích hợp backend

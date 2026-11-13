@@ -1,5 +1,62 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## Cập nhật AI thật, giữ Post PID 26776 — 13/11/2026
+
+**API tích hợp với provider thật đã chạy, có bằng chứng cả cho qua/chặn. Chưa
+nghiệm thu toàn luồng: UI chưa kiểm tra, V16–V19 thiếu fixture và có sai lệch
+phân loại V12/V20.** Các mục sau đây là lịch sử, không thay thế kết quả mới.
+
+- Checkout đầu phiên `feature/ai-post-moderation`, HEAD `7fba3fa`, working tree
+  sạch; đã đọc acceptance-report, handoff và policy-and-cases, không tìm thấy
+  AGENTS.md áp dụng. Không đổi nhánh/mã sản phẩm/cấu hình.
+- Xác minh 8083 thuộc java PID **26776**, bắt đầu **15:34:37 +07**. Giữ nguyên
+  process, không đọc env/command line/key, không dừng/restart hoặc chuyển stub.
+- JWT thật qua Keycloak authorization code + PKCE cho tài khoản tổng hợp mới,
+  profile sync 200/1000. Không thay client/realm hoặc đọc key OpenAI.
+- `node post/post/target/task08-openai-check.cjs` exit 0,
+  **15:40:32–15:41:20 +07**, run ID `MARKIEOPENAI1794559232222`. Script tạm đã dọn,
+  không commit script/credential/token/raw provider response. Không có server
+  stub trong script; tất cả request tạo bài qua Gateway tới process đang chạy.
+
+### Kết quả hiện tại
+
+| Nhóm | Kết quả |
+|---|---|
+| V01–V11, V13–V14, nguyên văn Task 01 | 13 ca 200/1000, mỗi ca 1 bài/1 Kafka event, content nguyên vẹn |
+| V12, kỳ vọng cho qua | **422/1015**, 0 bài/0 event; dấu hiệu **chặn nhầm** |
+| V15, fixture đe dọa tổng hợp mới | **422/1015**, 0 bài/0 event; đúng kỳ vọng |
+| V20, fixture V15 bỏ dấu | **200/1000**, 1 bài/1 event; dấu hiệu **cho qua nhầm** |
+| V16–V19 | Chưa chạy: chưa có fixture cụ thể; không gửi placeholder |
+| Tổng dữ liệu/event/search | 14 bài MongoDB, 14 event Kafka, 14 bài đúng content/postId trong my-posts và search |
+| Lỗi kỹ thuật provider trong 16 ca | 0; không coi service chỉ khởi động thành công là bằng chứng |
+
+Đã kiểm tra trực tiếp MongoDB và console consumer Kafka, lọc tài khoản thử trong
+bộ nhớ; không dùng search tức thì để suy ra không lưu, không in dữ liệu user khác.
+PID 26776 có TCP HTTPS tới 172.66.0.243:443, trùng DNS api.openai.com lúc quan sát;
+không thấy remote 18908 trong cửa sổ lấy mẫu. Metadata mạng + API decisions + mã
+hiện tại bổ trợ lời gọi OpenAI thật, không bắt TLS payload/header/key.
+
+Model mặc định repository `omni-moderation-latest`, nhưng không khẳng định model
+override hoặc model ID upstream: API tạo bài không trả trường đó, không đọc
+cấu hình runtime của PID. Hash/độ dài fixture V15/V20, bảng đủ 16 ca và giới hạn
+bằng chứng có trong [acceptance-report.md](../acceptance-report.md). Không chép
+hai câu nhạy cảm vào tài liệu. Không sửa policy để ép nhãn; đây là quan sát một
+lần, không phải đánh giá toàn bộ ngôn ngữ hoặc 16/16 đúng ngữ nghĩa.
+
+### Còn thiếu và bảo toàn môi trường
+
+- UI chưa có kết quả nghiệm thu. Dùng checklist thủ công trong báo cáo; `[BLOCK]`
+  không bảo đảm bị chặn khi đã dùng OpenAI thật. Không đổi endpoint/key để gây
+  lỗi 1016 trên process người dùng; chứng cứ nhánh lỗi vẫn từ thử nghiệm stub cũ.
+- V16–V19 cần mẫu tổng hợp phù hợp; cần xem xét chặn nhầm V12 và cho qua nhầm V20.
+  Không thay thuật toán/model/ngưỡng/ngoại lệ trong phiên này.
+- Giữ tài khoản/profile và 14 bài/event/search document tổng hợp mới, không xóa
+  dữ liệu cũ hoặc gỡ bài V20 để làm kết quả đẹp hơn. Observer/consumer/script đã
+  kết thúc, PID 26776 và các dịch vụ đang chạy được giữ nguyên.
+- Chỉ cập nhật tài liệu; không chạy lại 96 unit/context test hoặc build/lint.
+  Kết quả test lịch sử không được coi là vừa tái chạy. Commit hiện tại được báo
+  ở phản hồi cuối; không push/merge/triển khai.
+
 ## Cập nhật tiếp tục từ `191c2f3` — 13/11/2026
 
 **Đã sửa E11000 và nghiệm thu các luồng backend chính với hạ tầng thật/provider

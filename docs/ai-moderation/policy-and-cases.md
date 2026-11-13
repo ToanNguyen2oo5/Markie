@@ -1,5 +1,10 @@
 # Task 01 — Quy tắc kiểm duyệt và bộ ca tiếng Việt
 
+Ghi chú thực thi 13/11/2026: các bảng “Chưa chạy” bên dưới là bản đặc tả Task 01.
+Kết quả AI thật mới nhất (V01–V15/V20 đã chạy, V16–V19 thiếu mẫu), gồm chặn nhầm
+và cho qua nhầm, nằm trong [báo cáo nghiệm thu](acceptance-report.md). Không thay
+nhãn đánh giá hoặc chính sách bên dưới để khớp kết quả mô hình.
+
 Trạng thái: **hoàn thành phần tài liệu**, ngày 13/11/2026 (Asia/Saigon).
 Đối chiếu trên nhánh `main`, commit `85957fe3542e551afa1054e6e958b24f4901f332`.
 Nguồn quyết định: [hợp đồng chung](01-SHARED-CONTRACT.md), [Task 01](03-TASK-01-POLICY.md), [báo cáo Task 00](environment-report.md).

@@ -64,9 +64,12 @@ Chỉ thử AI thật khi đã có key thử nghiệm hợp lệ; dùng
 
 Trạng thái Task 08: **triển khai xong nhưng chưa nghiệm thu toàn luồng**.
 Xem [báo cáo nghiệm thu](docs/ai-moderation/acceptance-report.md) để biết bằng
-chứng đã chạy và các kiểm tra UI/AI thật còn thiếu. Lỗi MongoDB E11000 đã được
+chứng đã chạy và các kiểm tra UI/fixture còn thiếu. Lỗi MongoDB E11000 đã được
 sửa bằng partial unique index cho schema `post_id`; tích hợp backend với JWT,
 MongoDB/Kafka/search thật và provider giả lập đã chạy đạt các ca chính.
+Phiên tiếp theo đã gọi provider thật qua Post Service do người dùng cấu hình:
+16 ca tiếng Việt có 14 ca cho qua, 2 ca chặn, đồng thời ghi nhận chặn nhầm V12 và
+cho qua nhầm V20. UI và V16–V19 chưa hoàn tất; xem báo cáo để biết giới hạn.
 
 Full context test dùng database MongoDB mới `markie_context_test_<uuid>` và key
 giả, không seed vào database phát triển; có thể cấu hình Mongo test server qua
