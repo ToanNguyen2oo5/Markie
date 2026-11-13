@@ -11,6 +11,7 @@ import com.stewie.post.entity.PostStats;
 import com.stewie.post.exception.AppException;
 import com.stewie.post.exception.ErrorCode;
 import com.stewie.post.mapper.PostMapper;
+import com.stewie.post.moderation.ModerationService;
 import com.stewie.post.repository.PostRepository;
 import com.stewie.post.repository.httpclient.ProfileClient;
 import lombok.AccessLevel;
@@ -35,11 +36,14 @@ public class PostService {
     ProfileClient profileClient;
     PostMapper postMapper;
     KafkaTemplate<String, Object> kafkaTemplate;
+    ModerationService moderationService;
 
 
     public PostResponse createPost(PostRequest request) {
 
         var userId = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        moderationService.assertAllowed(request.getContent());
 
         Post post = Post.builder()
                 .userId(userId)
