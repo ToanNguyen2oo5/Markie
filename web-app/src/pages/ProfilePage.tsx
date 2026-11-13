@@ -4,7 +4,7 @@ import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Envelope, Calendar, Pencil,
   Article, UserCircle, ArrowClockwise, Warning, Camera,
-  ChatCircleText, UserPlus
+  ChatCircleText, UserPlus, X, Check
 } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useProfile, type ProfileData } from '../context/ProfileContext';

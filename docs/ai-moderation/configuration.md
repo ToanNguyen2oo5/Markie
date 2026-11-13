@@ -2,6 +2,9 @@
 
 Ngày: 13/11/2026 (Asia/Saigon). Task này chỉ chuẩn bị cấu hình và HTTP client; luồng tạo bài chưa gọi kiểm duyệt.
 
+Ghi chú cập nhật Task 08: câu trên mô tả thời điểm Task 02. Task 05 đã tích hợp
+kiểm duyệt vào tạo bài; xem [báo cáo nghiệm thu hiện tại](acceptance-report.md).
+
 ## Biến môi trường và giá trị
 
 | Thuộc tính `app.moderation` | Biến môi trường | Mặc định / yêu cầu |

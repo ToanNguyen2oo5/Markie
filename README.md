@@ -1,5 +1,71 @@
 # Markie — Distributed Social Network Platform
 
+## AI kiểm duyệt bài viết
+
+Chỉ kiểm duyệt văn bản `content` của **bài đăng mới** qua `POST /post/create`.
+Không kiểm duyệt bình luận, ảnh/video; bài cũ chưa được kiểm duyệt lại.
+
+Luồng: xác thực → validation (`@NotBlank`, tối đa 500 đơn vị UTF-16, kể cả
+khoảng trắng) → Post Service gọi API moderation đồng bộ → chỉ khi
+`results[0].flagged` là boolean `false` mới lưu MongoDB, lấy Profile và gửi
+`post.sync.events`. Nội dung gửi duyệt, lưu và phát event giữ nguyên, không trim.
+Frontend giữ bản nháp khi lỗi, khóa thao tác trong lúc chờ và chống gửi lặp.
+
+| HTTP / code | Kết quả |
+|---|---|
+| 200 / 1000 | Tạo bài thành công theo response hiện có |
+| 422 / 1015 | Nội dung bài viết chưa phù hợp; sửa rồi gửi lại |
+| 503 / 1016 | Chưa thể kiểm duyệt; thử lại sau |
+| 400 / 1017 | Thiếu/null/rỗng/chỉ khoảng trắng; không gọi AI |
+| 400 / 1018 | Quá 500 đơn vị UTF-16; không gọi AI |
+
+**AI lỗi thì chưa đăng bài**: timeout, lỗi mạng/HTTP hoặc response sai không
+được coi là cho qua; không lưu bài hay gửi event. Không retry tự động.
+Thành công HTTP chưa bảo đảm Kafka/Elasticsearch đã đồng bộ; luồng gửi event
+hiện có không chờ xác nhận broker.
+
+Key chỉ cấu hình ở **backend**, không đặt trong frontend hoặc commit vào Git.
+Spring Boot của dự án không tự đọc `.env`. Trong phiên chạy Post Service, cung
+cấp `OPENAI_API_KEY` qua môi trường/secret của máy, rồi cấu hình:
+
+```powershell
+$env:OPENAI_MODERATION_BASE_URL = 'https://api.openai.com'
+$env:OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
+# OPENAI_API_KEY phải đã có trong môi trường tiến trình, không in giá trị.
+Set-Location post/post
+.\mvnw.cmd spring-boot:run
+```
+
+Model mặc định `omni-moderation-latest`; base URL mặc định `https://api.openai.com`.
+Connect timeout 2000 ms và read timeout 5000 ms là hai giới hạn riêng, không phải
+cam kết tổng thời gian 5 giây. Ghi đè bằng cấu hình Spring
+`--app.moderation.connect-timeout-ms=2000 --app.moderation.read-timeout-ms=5000`.
+Thiếu key/cấu hình không hợp lệ làm Post khởi động thất bại.
+Xem [cấu hình và Maven fallback](docs/ai-moderation/configuration.md).
+
+Kiểm thử không cần key thật, từ `post/post`:
+
+```powershell
+.\mvnw.cmd '-Dtest=PostServiceTest,ModerationClientTest,ModerationServiceTest,ModerationConfigurationTest,PostRequestValidationTest,PostControllerValidationTest,GlobalExceptionHandlerTest' clean test
+.\mvnw.cmd test
+# Từ web-app:
+npm.cmd run build
+npm.cmd run lint
+```
+
+Để thử toàn luồng, chạy hạ tầng/backend/Gateway theo phần cài đặt bên dưới,
+đăng nhập tài khoản thử nghiệm và gửi bài có marker riêng. Với provider giả lập,
+dùng server riêng trên localhost, base URL test và **key giả**; không đưa key thật
+đến stub. Kiểm tra code 1000/1015/1016/1017/1018, MongoDB và số event Kafka;
+không suy ra “không lưu” từ tìm kiếm tức thì. Với bài được phép, chờ search có
+giới hạn và đối chiếu postId/nội dung. Khôi phục môi trường sau thử nghiệm.
+Chỉ thử AI thật khi đã có key thử nghiệm hợp lệ; dùng
+[bộ ca tiếng Việt](docs/ai-moderation/policy-and-cases.md), ghi chặn nhầm/cho qua nhầm.
+
+Trạng thái Task 08: **triển khai xong nhưng chưa nghiệm thu toàn luồng**.
+Xem [báo cáo nghiệm thu](docs/ai-moderation/acceptance-report.md) để biết bằng
+chứng đã chạy, lỗi MongoDB hiện tại và các kiểm tra UI/E2E/AI thật còn thiếu.
+
 **Markie** là nền tảng mạng xã hội hiện đại được xây dựng theo kiến trúc **Microservices hướng sự kiện (Event-Driven Microservices Architecture)**, kết hợp đa dạng các hệ cơ sở dữ liệu (**Polyglot Persistence**) nhằm tối ưu hóa hiệu năng, khả năng mở rộng và trải nghiệm người dùng.
 
 ---
