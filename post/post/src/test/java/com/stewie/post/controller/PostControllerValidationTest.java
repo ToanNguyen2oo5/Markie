@@ -52,19 +52,24 @@ class PostControllerValidationTest {
 
     static Stream<Arguments> invalidRequests() {
         return Stream.of(
-                Arguments.of("{}", "POST_CONTENT_REQUIRED"),
-                Arguments.of("{\"content\":null}", "POST_CONTENT_REQUIRED"),
-                Arguments.of("{\"content\":\"\"}", "POST_CONTENT_REQUIRED"),
-                Arguments.of("{\"content\":\" \\t\\n\"}", "POST_CONTENT_REQUIRED"),
-                Arguments.of("{\"content\":\"" + "a".repeat(501) + "\"}", "POST_CONTENT_TOO_LONG"),
-                Arguments.of("{\"content\":\"" + "\uD83D\uDE0A".repeat(251) + "\"}", "POST_CONTENT_TOO_LONG"));
+                Arguments.of("{}", "POST_CONTENT_REQUIRED", 1017, "Vui lòng nhập nội dung bài viết."),
+                Arguments.of("{\"content\":null}", "POST_CONTENT_REQUIRED", 1017, "Vui lòng nhập nội dung bài viết."),
+                Arguments.of("{\"content\":\"\"}", "POST_CONTENT_REQUIRED", 1017, "Vui lòng nhập nội dung bài viết."),
+                Arguments.of("{\"content\":\" \\t\\n\"}", "POST_CONTENT_REQUIRED", 1017, "Vui lòng nhập nội dung bài viết."),
+                Arguments.of("{\"content\":\"" + "a".repeat(501) + "\"}", "POST_CONTENT_TOO_LONG",
+                        1018, "Nội dung bài viết không được vượt quá 500 ký tự."),
+                Arguments.of("{\"content\":\"" + "\uD83D\uDE0A".repeat(251) + "\"}", "POST_CONTENT_TOO_LONG",
+                        1018, "Nội dung bài viết không được vượt quá 500 ký tự."));
     }
 
     @ParameterizedTest
     @MethodSource("invalidRequests")
-    void rejectsInvalidContentBeforeCallingService(String json, String message) throws Exception {
+    void rejectsInvalidContentBeforeCallingService(String json, String message, int code, String responseMessage)
+            throws Exception {
         var result = mvc.perform(post("/create").contentType(MediaType.APPLICATION_JSON).content(json))
                 .andExpect(status().isBadRequest())
+                .andExpect(content().json(objectMapper.writeValueAsString(
+                        Map.of("code", code, "message", responseMessage)), true))
                 .andReturn();
 
         assertThat(result.getResolvedException()).isInstanceOf(MethodArgumentNotValidException.class);
@@ -72,7 +77,6 @@ class PostControllerValidationTest {
         assertThat(exception.getBindingResult().getFieldError("content").getDefaultMessage())
                 .isEqualTo(message);
         verifyNoInteractions(postService);
-        // Response codes/messages 1017/1018 require Task 06; no fallback-code assertion here.
     }
 
     static Stream<String> validContent() {

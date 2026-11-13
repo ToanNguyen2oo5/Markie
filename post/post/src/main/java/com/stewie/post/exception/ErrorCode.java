@@ -19,7 +19,14 @@ public enum ErrorCode {
             1011, "username contains invalid character, please choose another one", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1012, "user not found", HttpStatus.BAD_REQUEST),
     POST_NOT_EXISTED(1013, "post not found", HttpStatus.BAD_REQUEST),
-    COMMENT_NOT_EXISTED(1014, "comment not found", HttpStatus.BAD_REQUEST);
+    COMMENT_NOT_EXISTED(1014, "comment not found", HttpStatus.BAD_REQUEST),
+    POST_CONTENT_REJECTED(
+            1015, "Nội dung bài viết chưa phù hợp. Vui lòng chỉnh sửa và thử lại.", HttpStatus.UNPROCESSABLE_ENTITY),
+    MODERATION_UNAVAILABLE(
+            1016, "Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
+    POST_CONTENT_REQUIRED(1017, "Vui lòng nhập nội dung bài viết.", HttpStatus.BAD_REQUEST),
+    POST_CONTENT_TOO_LONG(
+            1018, "Nội dung bài viết không được vượt quá 500 ký tự.", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;
