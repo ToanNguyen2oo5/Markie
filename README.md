@@ -87,62 +87,19 @@ cấu hình, không tự drop database test. Xem báo cáo để phân biệt te
 
 ## Chạy AI kiểm duyệt trên máy riêng (Windows PowerShell)
 
-Hướng dẫn áp dụng khi chạy Post Service trực tiếp bằng Maven trên Windows PowerShell.
-
-### 1. Lấy mã nguồn có tính năng AI
-
-Người quản lý dự án cần push nhánh `feature/ai-post-moderation` lên GitHub trước.
-
-Máy mới chạy:
-
-```powershell
-git clone https://github.com/ToanNguyen2oo5/Markie.git
-cd Markie
-git switch feature/ai-post-moderation
-```
-
-Nếu tính năng đã được merge vào `main`, sử dụng nhánh `main`.
-
-### 2. Chuẩn bị môi trường
-
-Cài Java 21, Node.js, Docker và khởi chạy hạ tầng theo README của dự án, gồm các
-dịch vụ cần cho đăng nhập, lưu bài và tìm kiếm.
-
-Trong thư mục `post/post`, kiểm tra Java mà Maven sử dụng:
-
-```powershell
-.\mvnw.cmd -version
-```
-
-Kết quả phải hiển thị **Java version: 21**.
-
-Nếu Maven dùng phiên bản khác, đặt đường dẫn đến JDK 21 thực tế trên máy:
-
-```powershell
-$env:JAVA_HOME = "DUONG_DAN_THU_MUC_JDK_21"
-$env:Path = "$env:JAVA_HOME\bin;$env:Path"
-```
-
-Sau đó kiểm tra lại phiên bản Maven. Không sao chép nguyên đường dẫn ví dụ nếu
-chưa thay bằng thư mục có thật.
-
-### 3. Tạo API key riêng
+### 1. Tạo API key
 
 1. Đăng nhập [OpenAI API Platform](https://platform.openai.com/api-keys).
-2. Chọn **Create new secret key**.
-3. Đặt tên dễ nhận biết, ví dụ `Markie-local`.
-4. Chọn project và ngày hết hạn phù hợp.
-5. Chọn **Restricted**, mở **Model capabilities**, cấp quyền **Request** cho
-   **Moderations `/v1/moderations`**. Giữ các quyền không sử dụng là **None**.
-6. Tạo key, sao chép và lưu riêng trước khi đóng cửa sổ.
+2. Nhấn **Create new secret key**.
+3. Nhập tên, chọn project và ngày hết hạn.
+4. Chọn **Restricted → Model capabilities → Moderations `/v1/moderations` → Request**.
+5. Nhấn **Create secret key**, sao chép và lưu key ngay. Không thể xem lại toàn bộ key sau khi đóng cửa sổ.
 
-Không gửi key vào chat, ảnh chụp màn hình hoặc repository.
+**Không gửi key vào chat hoặc đưa lên GitHub.**
 
-### 4. Nhập key trong PowerShell
+### 2. Nhập key vào Post Service
 
-Mở Terminal PowerShell tại thư mục `post/post`.
-
-Chạy lệnh sau:
+Mở **Terminal PowerShell** trong thư mục `Markie/post/post`, chạy:
 
 ```powershell
 $env:OPENAI_API_KEY = [System.Net.NetworkCredential]::new(
@@ -151,95 +108,28 @@ $env:OPENAI_API_KEY = [System.Net.NetworkCredential]::new(
 ).Password
 ```
 
-Khi xuất hiện lời nhắc, dán **key đầy đủ, không thêm dấu nháy**, rồi nhấn Enter.
-Nội dung nhập được che. Trong Terminal VS Code có thể dùng **Ctrl+Shift+V** hoặc
-**Shift+Insert** để dán.
+Khi được hỏi, dán key đầy đủ **không thêm dấu nháy**, rồi nhấn Enter. Nếu Ctrl+V không hoạt động, dùng **Ctrl+Shift+V** hoặc **Shift+Insert**.
 
-Đặt endpoint và model:
+Chạy tiếp:
 
 ```powershell
 $env:OPENAI_MODERATION_BASE_URL = "https://api.openai.com"
 $env:OPENAI_MODERATION_MODEL = "omni-moderation-latest"
-```
 
-Kiểm tra biến đã có mà không in key:
-
-```powershell
-if ([string]::IsNullOrWhiteSpace($env:OPENAI_API_KEY)) {
-    Write-Host "Chua nhap API key"
-} else {
-    Write-Host "Da cau hinh API key"
-}
-```
-
-Thông báo này chỉ xác nhận đã nhập biến, chưa xác nhận key được OpenAI chấp nhận.
-
-### 5. Khởi động Post Service
-
-Nếu Post Service đã chạy từ Terminal hoặc IDE khác, dừng đúng service đó trước
-để giải phóng cổng 8083.
-
-Trong **chính Terminal vừa nhập key**, chạy:
-
-```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Chờ dòng:
+**Phải chạy Post Service trong chính Terminal vừa nhập key**, với Java 21. Nếu service đã chạy ở nơi khác, dừng service cũ trước.
 
-```text
-Started PostApplication
-```
+### 3. Sử dụng
 
-Giữ Terminal mở. Khởi chạy các service còn lại và frontend theo README.
+Chờ dòng **`Started PostApplication`**, giữ Terminal mở rồi truy cập [Markie](http://localhost:3000/), đăng nhập và đăng bài.
 
-Không chạy Post Service bằng nút Run của IDE rồi giả định nó nhận được biến vừa
-nhập ở Terminal.
+- AI cho qua: bài được đăng.
+- AI chặn: giữ bản nháp để chỉnh sửa.
+- AI lỗi: chưa đăng, có thể thử lại.
 
-### 6. Kiểm tra sử dụng
-
-1. Mở [Markie](http://localhost:3000/).
-2. Đăng nhập bằng tài khoản thử nghiệm.
-3. Tạo bài vô hại, ví dụ: “Chào mọi người, tôi đang thử Markie.”
-4. Kiểm tra bài đăng thành công.
-
-Luồng xử lý:
-
-| Kết quả | Hành vi |
-|---|---|
-| AI cho qua | Bài được lưu và hiển thị |
-| AI đánh dấu vi phạm | Không đăng, giữ bản nháp để chỉnh sửa |
-| Không gọi được AI | Chưa đăng, giữ bản nháp để thử lại |
-
-Nếu cần xác minh tích hợp, thực hiện các ca trong `docs/ai-moderation/` và đối
-chiếu thông tin kỹ thuật an toàn ở backend. Chỉ khởi động thành công chưa chứng
-minh key gọi được API.
-
-### 7. Những lần sử dụng sau
-
-Các biến trên chỉ tồn tại trong phiên Terminal hiện tại:
-
-- Dừng rồi chạy lại service trong cùng Terminal: không cần nhập lại.
-- Đóng Terminal hoặc khởi động lại máy: thực hiện lại bước 4 và 5.
-- Key hết hạn hoặc bị thu hồi: tạo key mới, nhập lại và khởi động lại Post Service.
-
-Spring Boot không tự đọc file `.env` nếu dự án chưa cấu hình cơ chế nạp. Không
-ghi key trực tiếp vào `application.yaml`.
-
-### 8. Xử lý lỗi thường gặp
-
-| Lỗi | Cách xử lý |
-|---|---|
-| `OPENAI_API_KEY must resolve…` | Nhập key và chạy service trong cùng Terminal |
-| `UnsupportedClassVersionError` | Kiểm tra Maven đang dùng Java 21 |
-| `Port 8083 was already in use` | Xác định và dừng Post Service cũ trước khi chạy lại |
-| HTTP 503, code 1016 | Kiểm tra Internet và log backend; nguyên nhân có thể là key, quyền, giới hạn gọi, timeout hoặc dịch vụ AI |
-| HTTP 422, code 1015 | AI đã đánh dấu nội dung; chỉnh sửa bản nháp rồi gửi lại |
-
-Không tự tắt kiểm duyệt để xử lý lỗi kết nối.
-
-Hướng dẫn này dành cho người chạy backend. Người dùng truy cập website dùng
-chung không cần tự nhập API key.
+Các dịch vụ khác của Markie cần được chạy theo README. Khi đóng Terminal hoặc khởi động lại máy, cần nhập lại key trước khi chạy Post Service.
 
 **Markie** là nền tảng mạng xã hội hiện đại được xây dựng theo kiến trúc **Microservices hướng sự kiện (Event-Driven Microservices Architecture)**, kết hợp đa dạng các hệ cơ sở dữ liệu (**Polyglot Persistence**) nhằm tối ưu hóa hiệu năng, khả năng mở rộng và trải nghiệm người dùng.
 
