@@ -127,7 +127,7 @@ UI. Các mục này chưa có bằng chứng browser hiện tại; giới hạn 
 handling đã có kiểm tra backend hoặc harness lịch sử ở mức thấp hơn, không
 được mô tả như đã chạy UI. Không yêu cầu thêm tải, thiết bị, browser hoặc policy.
 
-## U6 — UI đúng 500 và 501 ký tự, đang chờ người dùng
+## U6 — UI đúng 500 và 501 ký tự, đã nhận kết quả một phần
 
 1. Tại localhost:3000, mở composer. Trong DevTools Console chạy
    `copy('a'.repeat(501))`, rồi dán vào textarea. Mong đợi bộ đếm **501/500**,
@@ -143,8 +143,18 @@ hoặc gửi request. Nếu DevTools chặn, không bỏ bảo vệ; ghi chưa t
 
 | Biên | Trạng thái |
 |---|---|
-| 501: counter/disable/không gửi/không thêm feed | Chờ người dùng |
-| 500: counter/nút bật/1 request/kết quả UI | Chờ người dùng |
+| 501: bộ đếm 501/500 | Đạt theo người dùng |
+| 501: nút Đăng bị khóa | Đạt theo người dùng |
+| 501: Network không có POST `/post/create` | **Chưa xác nhận riêng**, theo phản hồi người dùng |
+| 501: không có bài mới trong feed | **Chưa có xác nhận riêng** trong phản hồi này |
+| 500: bộ đếm 500/500, nút Đăng bật | Đạt theo người dùng sau khi xóa một chữ a |
+| 500: bấm một lần có đúng một request | Đạt theo người dùng |
+| 500: HTTP 200/code 1000, modal đóng, bài xuất hiện trên feed | Đạt theo người dùng |
+
+Kết quả nhận ngày 13/11/2026 sau commit `f29d01a`. Không có HAR/browser automation
+mới; đây là xác nhận thủ công. **Ca 500 đạt; ca 501 mới xác nhận counter/disable**,
+không suy từ nút bị khóa thành không có request hoặc không thêm feed. U6 chưa
+được đánh dấu đạt toàn bộ. Không thay kết quả U1–U5, V16–V19 hoặc V12/V20.
 
 Kiểm tra API đúng 500 qua provider giả lập đã đạt trong instance test riêng;
 **không thay thế U6 trên browser**. Không yêu cầu lặp U1–U5 hoặc V16–V19.

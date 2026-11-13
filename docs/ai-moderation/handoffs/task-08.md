@@ -1,5 +1,25 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## UI 500 đạt; 501 còn thiếu bằng chứng riêng — từ `f29d01a`
+
+Ngày 13/11/2026; nhánh `feature/ai-post-moderation`, HEAD đầu phiên `f29d01a`,
+working tree sạch. Ghi nhận đúng phản hồi thủ công:
+
+- **500 đạt**: counter 500/500, Đăng bật, bấm một lần đúng một request,
+  HTTP 200/code 1000, modal đóng và bài xuất hiện trên feed.
+- **501 chỉ đạt counter/disable**: 501/500 và Đăng bị khóa. Người dùng chưa xác
+  nhận riêng Network không phát POST; không có xác nhận riêng feed không thêm bài.
+  Không suy ra hai mục này từ disabled và **không đánh dấu U6 đạt toàn bộ**.
+
+U1–U5, V16–V19, đọc bài cũ và các ca API đã hoàn tất giữ nguyên; V12 chặn nhầm và
+V20 cho qua nhầm không thay đổi. Tích hợp đã có bằng chứng trong các phạm vi đó,
+**chưa chốt toàn bộ Task 08 đạt** vì ca UI 501 còn phần chưa xác nhận. Không thêm
+ca phụ, không coi thiếu bằng chứng là lỗi được phát hiện.
+
+Chỉ sửa README/checklist/report/handoff, không gọi API/AI, chạy lại test/build
+hoặc tác động dịch vụ/key/endpoint/dữ liệu. Không push/merge/triển khai. Không có
+HAR/browser automation hoặc kiểm kê DB/event mới cho bài người dùng vừa đăng.
+
 ## Chỉ còn UI 500/501 chờ người dùng — từ `79d9d5d`
 
 Ngày 13/11/2026; nhánh `feature/ai-post-moderation`, HEAD đầu phiên `79d9d5d`,

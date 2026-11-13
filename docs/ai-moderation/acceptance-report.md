@@ -1,5 +1,29 @@
 # Báo cáo nghiệm thu Task 08
 
+## UI 500 đạt, UI 501 xác nhận một phần — từ `f29d01a`
+
+Ngày 13/11/2026 (Asia/Saigon), nhánh `feature/ai-post-moderation`, HEAD đầu phiên
+`f29d01a`, working tree sạch. Nguồn: phản hồi kiểm thử thủ công của người dùng,
+không có HAR hoặc browser E2E do agent chạy.
+
+| Ca | Bằng chứng thực tế | Kết luận trong phạm vi đó |
+|---|---|---|
+| 501 ký tự | Bộ đếm 501/500, nút Đăng bị khóa | Đạt counter/disable |
+| 501: không phát request | Người dùng nói chưa xác nhận riêng Network | **Chưa xác nhận**, không suy từ disabled |
+| 501: không thêm feed | Phản hồi không xác nhận riêng mục này | **Chưa xác nhận riêng** |
+| 500 ký tự | Xóa một chữ a: counter 500/500, nút Đăng bật; bấm một lần đúng một request, HTTP 200/code 1000; modal đóng và bài xuất hiện trên feed | **Đạt ca UI 500 theo người dùng** |
+
+**U6 đạt một phần, chưa đánh dấu toàn bộ ca 501 hoặc toàn bộ Task 08 đạt.** Không
+gọi việc chưa quan sát Network là lỗi tính năng và không tự lấp bằng chứng bằng
+source/unit test. Không có kiểm kê MongoDB/Kafka mới cho bài do người dùng vừa
+tạo; các bằng chứng backend trước vẫn được giữ đúng lượt kiểm tra của chúng.
+
+U1–U5, V16–V19, đọc bài cũ và ma trận API đã hoàn tất như các mục trước. **V12
+chặn nhầm, V20 cho qua nhầm giữ nguyên** là hạn chế mô hình, không thay nhãn hoặc
+chính sách. Không mở thêm ca phụ. Chỉ cập nhật tài liệu/checklist, không gọi
+API/AI, chạy lại test/build hoặc tác động tiến trình/key/endpoint/dữ liệu.
+Không push/merge/triển khai. Các mục U6 còn chờ toàn bộ phía dưới là lịch sử.
+
 ## Bài cũ và ma trận API bắt buộc đã bổ sung — từ `79d9d5d`
 
 Ngày 13/11/2026 (Asia/Saigon), checkout đúng `feature/ai-post-moderation`, HEAD

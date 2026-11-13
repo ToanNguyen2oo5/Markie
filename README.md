@@ -74,8 +74,9 @@ lưu bài/event. Người dùng đã xác nhận UI U1–U5 đạt theo
 [checklist thủ công](docs/ai-moderation/ui-manual-checklist.md), gồm lỗi 503/1016
 giả lập trong tab và gửi lại nguyên nội dung thành công. Báo cáo phân biệt
 các mục bắt buộc với ca phụ: bài cũ đã đọc được qua API và các biến thể API còn
-thiếu đã chạy đạt trong Post test riêng. **UI 500/501 còn chờ người dùng U6**;
-hai sai lệch mô hình vẫn giữ nguyên.
+thiếu đã chạy đạt trong Post test riêng. **UI 500 đạt theo người dùng; 501 đã
+xác nhận counter/khóa nút nhưng chưa xác nhận riêng Network/không thêm feed**;
+U6 chưa đạt toàn bộ. Hai sai lệch mô hình vẫn giữ nguyên.
 
 Full context test dùng database MongoDB mới `markie_context_test_<uuid>` và key
 giả, không seed vào database phát triển; có thể cấu hình Mongo test server qua
