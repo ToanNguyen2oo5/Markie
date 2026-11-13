@@ -110,6 +110,21 @@ Nếu Mongo đã commit nhưng client gặp lỗi không rõ trạng thái, khô
 
 ## Frontend và tính tương thích
 
+I05 cụ thể hóa storage trong [api-contract](api-contract.md): UUID v4 server
+sinh, collection `post_media` và root riêng không lồng/alias với kho generic;
+delete giữ tombstone owner, retry đúng owner 204, khác owner 403. Lỗi metadata
+bị từ chối chắc chắn dọn file mới; lỗi write chưa rõ giữ bytes dù read vắng để
+đối soát. File có mã nội bộ 1025/403, 1026/404; Post vẫn chỉ trả 1024 cho lỗi
+FileClient. Không đổi schema/mã lỗi công khai Post hoặc luồng AI.
+
+Hai backend bắt buộc `POST_MEDIA_INTERNAL_SECRET`. File dùng
+`POST_MEDIA_STORAGE_DIR`; Post dùng `POST_MEDIA_FILE_BASE_URL`; cả hai dùng
+`POST_MEDIA_PUBLIC_BASE_URL` thống nhất, không trailing slash (chi tiết/default
+trong api-contract và handoff I05). URL tuyệt đối qua Gateway nên chưa thêm
+proxy `/file` ở Vite. Gateway chặn internal, public GET ảnh và giới hạn body
+stream Post/File 6 MiB, kể cả chunked. I06 vẫn phải kiểm tích hợp toàn luồng
+trước mở endpoint tạo bài có ảnh; I05 chưa nối PostService.
+
 Preview bằng object URL local, thu hồi URL khi thay/xóa/unmount/success. Giữ File object và content khi lỗi; khóa chọn/xóa ảnh, textarea, đóng/backdrop và submit khi đang gửi. Khi đổi ảnh nên xóa lỗi cũ liên quan. Không upload ngay khi chọn ảnh.
 
 Feed/profile/detail/search hiển thị field image nếu có. Bài cũ không cần migration. Kafka event image là field tùy chọn; producer/consumer tương thích khi thiếu field. Không đưa Base64, path đĩa, secret hoặc metadata owner nội bộ vào event. Search vẫn tìm theo text, chưa tìm bằng nội dung ảnh.

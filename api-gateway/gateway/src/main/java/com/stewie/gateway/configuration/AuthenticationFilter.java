@@ -39,7 +39,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     // external clients
     private static final List<String> INTERNAL_ENDPOINTS = List.of(
             "/profile/internal/users",
-            "/post/internal");
+            "/post/internal", "/file/internal");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -74,6 +74,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicEndpoint(ServerHttpRequest request) {
+        if (request.getMethod() == org.springframework.http.HttpMethod.GET
+                && request.getURI().getPath().matches("/file/post-media/[^/]+")) return true;
         return Arrays.stream(PUBLIC_ENDPOINTS)
                 .anyMatch(s -> request.getURI().getPath().matches(s));
     }

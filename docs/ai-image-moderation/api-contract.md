@@ -199,6 +199,44 @@ Giới hạn Post/File: file 5.242.880 B, request 6.291.456 B. I05 áp dụng m�
 phải kiểm tra route/proxy không buffer/chặn thấp hơn và phản hồi 413 trước khi
 đọc Base64/AI. Không coi giới hạn buffer codec là giới hạn kích thước upload.
 
+## Cụ thể hóa triển khai File trong I05
+
+Không đổi schema hay endpoint I02. ID thực tế là UUID v4 chữ thường, server sinh;
+ID sai cú pháp trả 404 ở API post-media, ID đúng cú pháp nhưng vắng trả 404 khi
+GET và 204 khi DELETE có đủ credential. DELETE lưu tombstone ownership trong
+collection `post_media`: retry cùng owner trả 204, owner khác vẫn 403 kể cả đã
+xóa. Không tái sử dụng ID và không có API cập nhật bytes. GET dùng `no-store`
+để việc xóa bù không để cache tiếp tục phục vụ ảnh.
+
+File dùng mã nội bộ 1025/403 (forbidden), 1026/404 (not found); các mã này chỉ
+thuộc enum File, không thêm mã công khai Post. FileClient ánh xạ lỗi thành
+Post 1024/503, kiểm code1000, UUID, URL chính xác dưới public base cấu hình và
+MIME/size/width/height khớp ảnh đã duyệt. HTTP redirect bị từ chối.
+
+`app.post-media.internal-secret` ở cả hai backend đọc `POST_MEDIA_INTERNAL_SECRET`;
+thiếu/blank/unresolved khiến bean khởi tạo thất bại. File có
+`POST_MEDIA_STORAGE_DIR` (mặc định `C:/uploads-post-media`), nằm tách rời và không
+lồng vào generic root; không dùng root có symlink/junction/alias. Post có
+`POST_MEDIA_FILE_BASE_URL` (mặc định `http://localhost:8084/file`). Cả hai dùng
+`POST_MEDIA_PUBLIC_BASE_URL` (mặc định `http://localhost:8888/file/post-media`).
+Base URL không có trailing slash, query, fragment hoặc user-info; dùng HTTPS,
+chỉ localhost được dùng HTTP trong triển khai này. Không lấy base URL từ request.
+
+File dùng `insert` metadata sau CREATE_NEW bytes. Lỗi bị từ chối chắc chắn
+(`DataIntegrityViolationException`, `InvalidDataAccessApiUsageException`) dọn
+đúng file mới. Với lỗi khác, kiểm metadata theo ID để ghi nhận tình trạng nhưng
+giữ bytes để đối soát, kể cả read vắng/lỗi: write có thể còn hoàn tất. Không
+diễn giải read vắng một lần thành chứng minh rollback. Lỗi cleanup chỉ log ID,
+không log exception/path/credential. Đây là cụ thể hóa F08/P07, tránh xóa bytes
+của metadata có thể đã commit; chưa có worker xử lý file mồ côi.
+
+Gateway chặn `/file/internal/**`, public GET `/file/post-media/{id}` và đếm body
+stream ở `/post/**`, `/file/**` tối đa 6 MiB, cả Content-Length và chunked,
+trả 413 chung an toàn. File/Tomcat drain body bị từ chối như Post để có thể trả
+413 đầy đủ; giới hạn nhận vẫn 5/6 MiB. URL ảnh tuyệt đối đi qua Gateway giữ
+context `/file`; Vite hiện không proxy `/file` và không cần proxy mới cho dạng
+URL này. Không hardcode URL/cổng trong component.
+
 ## Thứ tự xử lý và thất bại
 
 | Bước / kết quả | Hành động và kết quả API |

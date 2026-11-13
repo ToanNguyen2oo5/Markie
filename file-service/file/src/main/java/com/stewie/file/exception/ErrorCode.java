@@ -15,7 +15,15 @@ public enum ErrorCode {
     USERNAME_INVALID_CHARACTER(
             1011, "username contains invalid character, please choose another one", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1012, "user not found", HttpStatus.BAD_REQUEST),
-    FILE_NOT_FOUND(1013, "file not found", HttpStatus.BAD_REQUEST);
+    FILE_NOT_FOUND(1013, "file not found", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_REQUIRED(1019, "Image required", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_TOO_LARGE(1020, "Image exceeds 5 MiB", HttpStatus.PAYLOAD_TOO_LARGE),
+    POST_IMAGE_INVALID(1021, "Invalid static JPEG/PNG image", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_DIMENSIONS_EXCEEDED(1022, "Image dimensions exceeded", HttpStatus.BAD_REQUEST),
+    POST_IMAGE_COUNT_EXCEEDED(1023, "Only one image allowed", HttpStatus.BAD_REQUEST),
+    POST_MEDIA_STORAGE_UNAVAILABLE(1024, "Post media unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    POST_MEDIA_FORBIDDEN(1025, "Forbidden", HttpStatus.FORBIDDEN),
+    POST_MEDIA_NOT_FOUND(1026, "Image not found", HttpStatus.NOT_FOUND);
 
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -15,7 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
-           "/media/download/**"
+           "/media/download/**", "/post-media/*"
     };
 
     @Bean

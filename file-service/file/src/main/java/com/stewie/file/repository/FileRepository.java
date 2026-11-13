@@ -75,13 +75,21 @@ public class FileRepository {
     public void deleteFile(String fileName) throws IOException {
         Path folder = Paths.get(storageDir);
         Path filePath = folder.resolve(fileName).normalize().toAbsolutePath();
+        requireGenericPath(filePath);
         Files.deleteIfExists(filePath);
     }
 
     public Resource read(FileMgmt fileMgmt) throws IOException {
+        requireGenericPath(Path.of(fileMgmt.getPath()).toAbsolutePath().normalize());
         var data = Files.readAllBytes(Path.of(fileMgmt.getPath()));
 
         return new ByteArrayResource(data);
+    }
+
+    private void requireGenericPath(Path path) throws IOException {
+        Path root = Paths.get(storageDir).toAbsolutePath().normalize();
+        if (!root.equals(path.getParent()) || Files.isSymbolicLink(path)
+                || !root.toRealPath().equals(root)) throw new IOException("Invalid generic storage path");
     }
 
 }

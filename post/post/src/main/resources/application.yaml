@@ -29,6 +29,10 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 app:
+  post-media:
+    internal-secret: ${POST_MEDIA_INTERNAL_SECRET:}
+    file-base-url: ${POST_MEDIA_FILE_BASE_URL:http://localhost:8084/file}
+    public-base-url: ${POST_MEDIA_PUBLIC_BASE_URL:http://localhost:8888/file/post-media}
   moderation:
     api-key: ${OPENAI_API_KEY}
     base-url: ${OPENAI_MODERATION_BASE_URL:https://api.openai.com}
