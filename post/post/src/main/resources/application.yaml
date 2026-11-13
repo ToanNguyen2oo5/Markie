@@ -1,8 +1,15 @@
 server:
   port: 8083
+  tomcat:
+    # Drain rejected multipart bodies so the client receives the safe 413 response.
+    max-swallow-size: -1
   servlet:
     context-path: /post
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5242880B
+      max-request-size: 6291456B
   application:
     name: post-service
   data:

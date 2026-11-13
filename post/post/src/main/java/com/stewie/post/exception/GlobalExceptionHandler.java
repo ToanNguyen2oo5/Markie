@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +20,17 @@ import java.util.Objects;
 public class GlobalExceptionHandler {
 
     private static final String MIN_ATTRIBUTE = "min";
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiResponse> handlingOversizedMultipart(MaxUploadSizeExceededException exception) {
+        // Never log the multipart exception: its cause may contain caller-controlled data.
+        return handlingAppException(new AppException(ErrorCode.POST_IMAGE_TOO_LARGE));
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    ResponseEntity<ApiResponse> handlingInvalidMultipart(MultipartException exception) {
+        return handlingAppException(new AppException(ErrorCode.POST_IMAGE_INVALID));
+    }
 
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse> handlingRuntimeException(RuntimeException exception) {
