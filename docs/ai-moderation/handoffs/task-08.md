@@ -1,5 +1,41 @@
 # Bàn giao Task 08 — Kiểm thử và tài liệu
 
+## UI 503/1016 và ranh giới nghiệm thu — từ `54f88e2`
+
+Ngày 13/11/2026, đúng nhánh `feature/ai-post-moderation`, HEAD đầu phiên
+`54f88e2`, working tree sạch. Đã đối chiếu Task 08/07 với bằng chứng hiện tại.
+
+**Bắt buộc còn thiếu theo Task 08 gốc:** U5 UI 503/1016; UI nội dung dài 500/501;
+đọc bài cũ; các biến thể ma trận API ở mức full stack chưa có (HTTP provider
+401/429, JSON sai/results rỗng/flagged thiếu/null, content thiếu/null/rỗng và
+đúng 500 cho qua). Các biến thể này đã có unit/slice/socket-storage-mock ở mức
+thấp hơn; full stack đã có false/true/timeout/500/flagged chuỗi/whitespace/quá dài.
+Không tuyên bố các ca thấp hơn chưa chạy hoặc đổi chúng thành E2E.
+
+**Ca phụ, không thêm cổng Task 08:** UI mất mạng, HTML/JSON response sai
+(robustness Task 07), refresh token lỗi riêng, UI 250/251 emoji. Không mở rộng
+sang tải/thiết bị/browser/model mới. Bảng nguồn và trạng thái chi tiết trong
+[acceptance-report.md](../acceptance-report.md).
+
+Chrome vẫn `The browser access host is unavailable`. Đã bổ sung U5 trong
+[ui-manual-checklist.md](../ui-manual-checklist.md): Console chặn POST tạo bài ở
+tab localhost, trả Response 503/code 1016 sau 1,5 giây; tự khôi phục sau response
+hoặc 2 phút. Không gửi request giả lỗi tới server, không đọc/log credential hoặc
+body, không sửa endpoint/key/Post process. Network không có 503 thật; không
+nhầm bằng chứng UI với backend response. Người dùng cần xác nhận đúng thông báo,
+giữ modal/content, hết chờ/mở lại thao tác, không thêm feed và thử lại được.
+
+Đã gửi yêu cầu kết quả; **U5 đang chờ người dùng, chưa đánh dấu đạt**. Snippet
+`node --check` exit 0 chỉ là kiểm tra cú pháp, không phải test UI. U1–U4 vẫn đạt
+theo người dùng. V16–V19 đã hoàn tất bốn ca 422/1015, 0 bài/event; V12 chặn nhầm
+và V20 cho qua nhầm giữ nguyên, phân biệt chất lượng mô hình với tích hợp đúng.
+
+Chỉ sửa README/checklist/report/handoff, không gọi lại API/AI hay test/build;
+PID 26776 giữ nguyên thời điểm bắt đầu 15:34:37 +07, không đọc key/env/command
+line, không dừng/restart/chuyển provider. Không thay dữ liệu, push/merge/triển
+khai. **Chưa chốt toàn Task 08 đạt** vì bằng chứng bắt buộc ở trên còn thiếu;
+không dùng các ca phụ làm cổng nghiệm thu mới. Commit được báo ở phản hồi cuối.
+
 ## UI U1–U4 được người dùng xác nhận — từ `cd3f88b`
 
 Ngày 13/11/2026 (Asia/Saigon), đúng nhánh `feature/ai-post-moderation`, HEAD đầu

@@ -1,5 +1,76 @@
 # Báo cáo nghiệm thu Task 08
 
+## Đối chiếu phạm vi và UI 503/1016 — tiếp tục từ `54f88e2`
+
+Ngày 13/11/2026 (Asia/Saigon), checkout `feature/ai-post-moderation`, HEAD đầu
+phiên `54f88e2`, working tree sạch. Đã đọc báo cáo/checklist, Task 08 và Task 07
+để phân loại đúng phạm vi; không thêm điều kiện nghiệm thu ngoài yêu cầu gốc.
+
+### Chính xác các bằng chứng còn thiếu
+
+“Còn thiếu” dưới đây nói về **mức kiểm tra**, không khẳng định tính năng bị lỗi.
+Các ca unit/slice hoặc socket với storage mock đã chạy không bị bỏ qua, nhưng
+không được đổi nhãn thành kiểm thử hệ thống thật/browser.
+
+| Ca | Phân loại và nguồn | Trạng thái hiện tại |
+|---|---|---|
+| UI API trả 503/code 1016: đúng thông báo, giữ modal/content, hết chờ, không thêm feed, thử lại được | **Bắt buộc**, Task 08 §3.3 và điều kiện ba luồng UI | **Chờ người dùng U5**; browser host vẫn unavailable |
+| UI nội dung dài, giới hạn 500 | **Bắt buộc**, Task 08 §3.4 | Chưa xác nhận UI 500/501 ASCII; backend validation đã có unit và ca quá dài qua API thật |
+| Đọc bài đã tồn tại trước tích hợp AI; không tuyên bố đã duyệt lại | **Bắt buộc**, Task 08 §3.5 | Chưa có kiểm tra bài cũ được ghi nhận; my-posts/search bài mới không thay thế mục này |
+| Provider giả lập HTTP 401 và 429 qua backend + DB/event thật | **Bắt buộc trong ma trận API**, Task 08 §2 | Unit/socket-storage-mock đã có; chưa chạy hai biến thể với full stack. HTTP 500, timeout và quyết định true/false đã có full stack |
+| Provider JSON sai, results rỗng, flagged thiếu/null qua backend + DB/event thật | **Bắt buộc trong ma trận API**, Task 08 §2 | Unit/socket-storage-mock đã có; full stack đã thử flagged sai kiểu chuỗi, chưa thử riêng các biến thể vừa liệt kê |
+| Content thiếu/null/rỗng và đúng 500 được cho qua qua API + DB/event thật | **Bắt buộc trong ma trận API**, Task 08 §2 | Unit/slice/socket-storage-mock đã có; full stack đã thử whitespace và quá 500, chưa ghi nhận các biến thể vừa liệt kê |
+| UI lỗi mạng và HTML/JSON response sai | **Ca phụ với nghiệm thu Task 08**; robustness được Task 07 nhắc | Chưa browser hiện tại; harness cũ đã dọn không là bằng chứng tái chạy. Không nâng thành cổng Task 08 mới |
+| Refresh token lỗi riêng; UI 250/251 emoji | **Ca phụ** ngoài các tình huống Task 08 gọi tên riêng | Chưa browser hiện tại; UTF-16/backend đã có kiểm tra mức thấp hơn. Không thêm cổng nghiệm thu mới |
+
+Các biến thể provider/validation còn thiếu cần môi trường test riêng hoặc chặn
+request phía test; **không được đổi endpoint/key/restart PID 26776** để thực hiện.
+Phiên này chỉ chuẩn bị UI 503/1016 theo yêu cầu, chưa chạy thêm ma trận backend
+khác. Không yêu cầu bổ sung tải, thiết bị, trình duyệt khác, pin model snapshot
+hay quy tắc phân loại mới để hoàn thành Task 08.
+
+### UI 503/1016: hướng dẫn đã cung cấp, chưa có kết quả
+
+Thử trực tiếp Chrome bằng công cụ `createBrowserTab` vẫn trả
+`The browser access host is unavailable`, không có tab để agent thao tác.
+Đã bổ sung [hướng dẫn U5 cụ thể](ui-manual-checklist.md#u5--http-503code-1016-giả-lập-trong-tab-đang-chờ-người-dùng)
+và gửi yêu cầu kết quả bất đồng bộ cho người dùng.
+
+Đoạn Console chỉ chặn POST cùng origin `/post/create` ở tab localhost:3000,
+đợi 1,5 giây rồi trả `Response` HTTP 503/JSON code 1016 trong bộ nhớ. Không gửi
+request tạo bài lỗi tới server, không đọc/log token/header/body; tự khôi phục
+fetch sau response hoặc tối đa 2 phút. Vì thế **không có request 503 thật trong
+Network và không có bằng chứng backend lỗi mới**. Lần thử lại sau tự gỡ đi qua
+backend/provider thật và có thể lưu bài thử. Có lệnh khôi phục thủ công/tải lại
+tab; không sửa ứng dụng, cấu hình, key hoặc process Post.
+
+Thông báo mong đợi đối chiếu trực tiếp mã component/hợp đồng:
+**“Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.”** Người dùng cần xác nhận
+giữ nguyên modal/content, giải phóng trạng thái chờ và khóa, feed không thêm bài,
+có thể thử lại. **Chưa nhận kết quả tại thời điểm ghi báo cáo; U5 chưa đạt.**
+Đoạn mã được trích từ tài liệu và `node --check` exit 0; đây chỉ là kiểm tra cú
+pháp, không phải chạy UI hoặc assertion hành vi React.
+
+### Kết luận và bảo toàn bằng chứng
+
+V16–V19 **đã hoàn tất** ở phiên `cd3f88b`: bốn ca AI thật 422/1015, mỗi ca 0 bài
+MongoDB/0 post event Kafka; fixture vẫn giữ nhãn chặn. Không còn thiếu các ca
+này và không gọi lại AI trong phiên hiện tại. **V12 chặn nhầm và V20 cho qua
+nhầm giữ nguyên**: đó là hạn chế phân loại của mô hình, không phải lỗi mapping
+HTTP/save/event. Không đổi policy hoặc yêu cầu kết quả mô hình phải hoàn hảo như
+một cổng nghiệm thu tích hợp mới.
+
+U1–U4 đạt theo kiểm thử thủ công người dùng; backend luồng đạt/chặn/lỗi đã có
+bằng chứng phân tầng từ các phiên trước. **Triển khai tích hợp đã có kiểm chứng
+luồng chính, chưa chốt toàn bộ Task 08 đạt** vì các mục bắt buộc còn thiếu ở bảng
+trên, đặc biệt U5 chưa nhận kết quả. Các ca phụ được ghi nhận trung thực nhưng
+không dùng làm lý do kéo dài nghiệm thu sau khi các yêu cầu gốc đã hoàn tất.
+
+Chỉ sửa tài liệu; không gọi thêm API/AI, không chạy lại unit/build/lint. PID
+26776 vẫn bắt đầu 15:34:37 +07; không đọc key/env/command line, không restart,
+dừng hoặc thay endpoint. Không thêm server stub vào ứng dụng/Git, không thay dữ
+liệu. Kiểm tra cú pháp snippet và diff trước commit; không push/merge/triển khai.
+
 ## Người dùng xác nhận UI U1–U4 — tiếp tục từ `cd3f88b`
 
 Ngày ghi nhận **13/11/2026 (Asia/Saigon)**. **U1–U4 đạt theo kiểm thử UI thủ công

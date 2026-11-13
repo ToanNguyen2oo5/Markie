@@ -26,3 +26,96 @@ Không chép câu đe dọa vào báo cáo; người dùng dùng mẫu tổng h�
 **UI đạt trong phạm vi U1–U4, không phải mọi nhánh UI đã được kiểm tra.** Chưa có
 xác nhận cho lỗi AI 503/1016, mạng/response sai, refresh token lỗi hoặc từng biên
 UTF-16. Không gây lỗi bằng đổi key/endpoint hoặc dừng Post Service người dùng.
+
+## U5 — HTTP 503/code 1016 giả lập trong tab, đang chờ người dùng
+
+Mục bắt buộc theo Task 08 §3.3 và điều kiện ba luồng đạt/chặn/lỗi ở UI. Đoạn mã
+dưới chỉ thay `window.fetch` tạm thời của **tab localhost:3000**; không đổi URL
+backend/key, không gọi OpenAI, không gửi request tạo bài đầu tiên tới server.
+Không đọc hoặc in token/header/body. Request khác được chuyển tiếp nguyên vẹn.
+Không dùng “Edit and resend” hoặc sửa response của request đã thực sự gửi: bài
+có thể đã được lưu trước khi bạn thấy response giả.
+
+1. Đăng nhập, mở composer, nhập `MARKIE-UI503-TEST` và ghi nhận feed hiện tại.
+2. Mở DevTools → Console của chính tab `http://localhost:3000`. Đọc rồi chạy đoạn
+   mã sau. Nó chỉ giả lập POST cùng origin `/post/create`, chờ 1,5 giây rồi trả
+   HTTP 503 với JSON code 1016. Tự khôi phục sau phản hồi hoặc tối đa 2 phút.
+
+```javascript
+(() => {
+  if (location.origin !== 'http://localhost:3000') {
+    throw new Error('Chỉ chạy trong tab http://localhost:3000');
+  }
+  if (window.__markieRestore503) {
+    throw new Error('Đang có kiểm tra 503; hãy khôi phục trước');
+  }
+  const originalFetch = window.fetch;
+  let timer;
+  let hits = 0;
+  const restore = () => {
+    if (window.fetch === simulatedFetch) window.fetch = originalFetch;
+    clearTimeout(timer);
+    if (window.__markieRestore503 === restore) delete window.__markieRestore503;
+  };
+  const simulatedFetch = async function (input, init) {
+    const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+    const method = String(init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    if (url.origin === location.origin && url.pathname === '/post/create' && method === 'POST') {
+      console.info('[Markie UI test] simulated 503/1016 #' + (++hits) + '; no API request sent');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      restore();
+      return new Response(JSON.stringify({
+        code: 1016,
+        message: 'Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.'
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    return originalFetch.call(this, input, init);
+  };
+  window.__markieRestore503 = restore;
+  window.fetch = simulatedFetch;
+  timer = setTimeout(restore, 120000);
+  console.info('[Markie UI test] armed for the next create request; auto-restores within 2 minutes');
+})();
+```
+
+3. Bấm Đăng một lần ngay sau khi cài giả lập. Trong 1,5 giây phải thấy trạng thái
+   chờ và thao tác bị khóa. Sau đó kiểm tra đủ năm kết quả:
+   - Thông báo đúng: **“Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.”**
+   - Modal còn mở, nội dung vẫn đúng `MARKIE-UI503-TEST`.
+   - Nhãn chờ/spinner hết; textarea, nút Đăng và nút đóng dùng lại được.
+   - Feed không thêm bài cho lần lỗi.
+   - Console có dòng cố định `simulated 503/1016 #1; no API request sent`.
+4. Giả lập đã tự gỡ. Đổi nội dung thành lời chào vô hại có marker riêng rồi bấm
+   Đăng lại. Lần này đi qua backend/provider thật: mong đợi thành công, chỉ thêm
+   1 bài và modal đóng. Nếu AI lỗi/chặn thật, ghi đúng kết quả, không coi là đã đạt
+   phần thử lại thành công. Dùng dữ liệu thử vì lần thành công được lưu thật.
+5. Nếu hủy trước khi bấm Đăng, chạy `window.__markieRestore503?.()` hoặc tải lại
+   tab để dọn giả lập. Không thay/dừng Post Service PID 26776.
+
+Đây là response tạo trong bộ nhớ tab: **Network không có request 503 thật** và
+không chứng minh backend trả 503 trong lượt này. HTTP status/code được đoạn mã
+trên đặt cố định; UI cần được người dùng quan sát. Không bật tùy chọn bỏ bảo vệ
+DevTools nếu trình duyệt chặn thao tác; báo chưa chạy để chọn môi trường test khác.
+
+| Kiểm tra U5 | Trạng thái |
+|---|---|
+| Đúng thông báo 1016 | Chờ người dùng |
+| Giữ modal và nguyên nội dung | Chờ người dùng |
+| Giải phóng trạng thái chờ/khóa | Chờ người dùng |
+| Không thêm bài vào feed ở lần lỗi | Chờ người dùng |
+| Có thể thử lại; kết quả lần thử lại | Chờ người dùng |
+
+Gửi kết quả năm dòng trên, kèm lỗi nếu có; không gửi key/token hoặc toàn bộ log.
+
+## Các ca còn thiếu ngoài U5 — không mở rộng phạm vi
+
+**Bắt buộc đã có trong Task 08:** UI nội dung dài (thử 500/501 ASCII; 501 không
+gửi request, không thêm bài; 500 hợp lệ có thể đăng nếu AI cho qua); đọc một bài
+đã tồn tại trước tích hợp AI và không gán nhãn đã duyệt lại. Cả hai chưa có xác
+nhận thủ công trong báo cáo hiện tại.
+
+**Ca phụ, không là cổng nghiệm thu Task 08 mới:** UI lỗi mạng, HTML/JSON response
+sai (robustness của Task 07), refresh token lỗi riêng, thử thêm 250/251 emoji trên
+UI. Các mục này chưa có bằng chứng browser hiện tại; giới hạn UTF-16/response
+handling đã có kiểm tra backend hoặc harness lịch sử ở mức thấp hơn, không
+được mô tả như đã chạy UI. Không yêu cầu thêm tải, thiết bị, browser hoặc policy.
