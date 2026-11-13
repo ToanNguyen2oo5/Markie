@@ -64,7 +64,14 @@ Chỉ thử AI thật khi đã có key thử nghiệm hợp lệ; dùng
 
 Trạng thái Task 08: **triển khai xong nhưng chưa nghiệm thu toàn luồng**.
 Xem [báo cáo nghiệm thu](docs/ai-moderation/acceptance-report.md) để biết bằng
-chứng đã chạy, lỗi MongoDB hiện tại và các kiểm tra UI/E2E/AI thật còn thiếu.
+chứng đã chạy và các kiểm tra UI/AI thật còn thiếu. Lỗi MongoDB E11000 đã được
+sửa bằng partial unique index cho schema `post_id`; tích hợp backend với JWT,
+MongoDB/Kafka/search thật và provider giả lập đã chạy đạt các ca chính.
+
+Full context test dùng database MongoDB mới `markie_context_test_<uuid>` và key
+giả, không seed vào database phát triển; có thể cấu hình Mongo test server qua
+`MARKIE_TEST_MONGODB_URI`. Test vẫn cần MongoDB thật và hạ tầng xác thực theo
+cấu hình, không tự drop database test. Xem báo cáo để phân biệt test này với E2E.
 
 **Markie** là nền tảng mạng xã hội hiện đại được xây dựng theo kiến trúc **Microservices hướng sự kiện (Event-Driven Microservices Architecture)**, kết hợp đa dạng các hệ cơ sở dữ liệu (**Polyglot Persistence**) nhằm tối ưu hóa hiệu năng, khả năng mở rộng và trải nghiệm người dùng.
 

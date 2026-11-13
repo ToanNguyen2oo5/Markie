@@ -1,5 +1,194 @@
 # Báo cáo nghiệm thu Task 08
 
+## Cập nhật tiếp tục từ `191c2f3` — 13/11/2026
+
+**Kết luận hiện tại: đã sửa lỗi khởi động MongoDB và kiểm tra tích hợp backend
+với hạ tầng thật/provider giả lập; chưa nghiệm thu toàn luồng vì thiếu UI và AI
+thật.** Phần lịch sử phía dưới mô tả phiên trước, không phải trạng thái hiện tại.
+
+Checkout xác minh tại repository Markie, nhánh `feature/ai-post-moderation`, HEAD
+đầu phiên `191c2f3`, working tree sạch; không có AGENTS.md áp dụng được tìm thấy
+trong repository hoặc các thư mục cha. Không đổi nhánh, reset hoặc ghi đè thay đổi.
+Môi trường vẫn JDK 21.0.12.1, Maven 3.9.16 cache, Node 24.22.0/npm 11.19.1.
+Docker đọc được bằng quyền bổ sung: MongoDB, Keycloak, Neo4j, Redis, Kafka,
+Elasticsearch, Kibana đang chạy. Không tạo lại/restart/reset container.
+
+### Nguyên nhân và sửa MongoDB
+
+- Tái hiện bằng Maven `-Dtest=PostApplicationTests test`, key giả và base URL
+  `http://127.0.0.1:1`: exit 1, 1 test/1 error, kết thúc 14:38:03 +07.
+- Đã đọc chuỗi exception đầy đủ: CommentController → CommentService →
+  CommentRepository → MongoTemplate → MongoPersistentEntityIndexCreator →
+  DefaultIndexOperations.ensureIndex → driver CreateIndexesOperation → E11000.
+  Đây là thao tác **createIndexes lúc khởi tạo context**, không phải insert bài
+  hoặc lỗi provider AI. Test cũ dùng application.yaml trực tiếp, tức DB phát triển.
+- Đích: database `post-service`, collection `likes`, index định tạo
+  `uniq_post_user_like`, unique `{post_id:1,user_id:1}`. Truy vấn chỉ đọc cho thấy
+  2 bản ghi đều có `target_type/target_id/user_id/created_at`, đều thiếu `post_id`.
+  Nhóm theo `(post_id,user_id)` có 1 nhóm trùng. Trước sửa chỉ có `_id_`,
+  `uniq_target_user_like` (unique target_type/target_id/user_id), `idx_target_recent`;
+  chưa có `uniq_post_user_like`. Không xuất ID, nội dung hay giá trị user_id.
+- Nguyên nhân: schema dữ liệu `target_*` và khai báo index schema `post_id` không
+  tương thích; missing post_id được tính như null trong index unique. Đối chiếu
+  [MongoDB unique indexes](https://www.mongodb.com/docs/manual/core/index-unique/)
+  và [partial indexes](https://www.mongodb.com/docs/manual/core/index-partial/).
+- `git show 85957fe:post/post/src/main/java/com/stewie/post/entity/Like.java`
+  có cùng khai báo gây lỗi; Like.java không bị các task AI sửa trước phiên này.
+  Có schema target_* trong commit `b949c10` ở nhánh lịch sử khác, nhưng commit đó
+  **không phải ancestor** của baseline. Chỉ kết luận bất tương thích có sẵn trước
+  AI; không kết luận ai/tiến trình nào đã tạo dữ liệu hiện tại.
+- Sửa nhỏ trong `Like.java`: giữ tên/keys/unique của index, thêm
+  `partialFilter = "{'post_id': {'$exists': true}}"`. Ràng buộc post-like áp dụng
+  cho bản ghi có post_id; bản ghi target_* tiếp tục do unique index hiện có quản
+  lý. Không cherry-pick tính năng like từ nhánh khác, không đổi policy moderation.
+- Không xóa/drop/sửa dữ liệu hoặc index. Post khởi động thật trên **cùng DB phát
+  triển** sau sửa, Tomcat 8083 `/post` lúc 14:40:44 +07. Kiểm tra lại: vẫn 2 likes,
+  ba index cũ giữ nguyên, thêm partial unique index đúng cấu hình. Vì vậy không
+  chỉ đổi DB test để che lỗi khởi động thực tế.
+- Sửa `PostApplicationTests`: contextLoads giữ nguyên và thêm assertion tên DB;
+  dùng DB ngẫu nhiên `markie_context_test_<uuid>` với MongoDB thật, seed hai tài
+  liệu target_* tổng hợp trước khi context tạo index. Thêm test partial filter,
+  chấp nhận hai post khác nhau và từ chối duplicate `(post_id,user_id)`. Key giả
+  và URL localhost chỉ trong test; không gọi provider. Không mock MongoTemplate,
+  không disable test hoặc auto-index. DB test không bị drop, chỉ chứa dữ liệu giả.
+
+Giới hạn sửa: hỗ trợ **khởi động và ràng buộc index post_id** khi collection có
+schema khác; không phải triển khai đầy đủ thao tác like cho cả hai schema. Checkout
+hiện không có luồng ghi Like. Index unique target_* vẫn có thể ràng buộc các lần
+ghi legacy post_id nếu sau này thêm tính năng like; cần thiết kế/migration riêng
+trước khi mở tính năng đó. Nếu môi trường khác đã có index non-partial cùng tên,
+phải lập phương án chuyển index được duyệt; bản sửa không tự drop/rebuild index.
+
+### Lệnh và kết quả phiên tiếp tục
+
+Dùng `$env:JAVA_HOME` và `$taskMaven` theo đoạn lệnh lịch sử bên dưới, từ `post/post`:
+
+```powershell
+& $taskMaven -o -B "-Dmaven.repo.local=$env:USERPROFILE\.m2\repository" clean test
+& $taskMaven -o -B "-Dmaven.repo.local=$env:USERPROFILE\.m2\repository" '-Dtest=PostServiceTest,ModerationClientTest,ModerationServiceTest,ModerationConfigurationTest,PostRequestValidationTest,PostControllerValidationTest,GlobalExceptionHandlerTest' test
+```
+
+| Kiểm tra hiện tại | Kết quả thực tế |
+|---|---|
+| Full suite clean compile sau sửa, 14:40:12 +07 | Exit 0, **96 test**, 0 failure/error/skipped: 94 nghiệp vụ + 2 context/index; đối chiếu Surefire XML |
+| Full suite trên mã test cuối, 14:50:28 +07 | Exit 0, **96/96**, 0 failure/error/skipped; test đọc URI mặc định từ YAML có sẵn, không lặp credential trong source |
+| Chạy lại riêng bộ liên quan sau sửa, 14:46:32 +07 | Exit 0, **94/94**, 0 failure/error/skipped |
+| Frontend `npm.cmd run build`, `npm.cmd run lint` | Cả hai exit 0; build còn warning chunk JS 584.36 kB; lint không in warning |
+| Post với application.yaml phát triển | Khởi động thành công, không E11000 |
+| Gateway/Profile/Search `spring-boot:run` | Khởi động thành công bằng Maven offline/cache với quyền đọc bổ sung |
+
+Các lần compile Gateway/Search ban đầu trong sandbox không đọc được JAR
+spring-security-crypto; chạy lại có quyền đọc cache đã khởi động được. Không đổi
+dependency để bỏ lỗi. Cảnh báo Neo4j về thuộc tính chưa tồn tại trên fixture mới
+không chặn profile sync. Không sửa các cảnh báo ngoài phạm vi.
+
+Full context hiện cần MongoDB thật và Keycloak/discovery của cấu hình hiện có.
+Có thể đặt `MARKIE_TEST_MONGODB_URI` cho Mongo test server khác; test luôn chọn
+database mới ngẫu nhiên, không seed vào database của URI. Không tự dọn/drop các
+DB test theo yêu cầu bảo toàn dữ liệu. 94 unit/slice/service test vẫn không cần
+hạ tầng ngoài hoặc key thật.
+
+### API tích hợp trên hệ thống thật — provider vẫn giả lập
+
+Đã chạy script tạm `node .task08-real.cjs` (exit 0) lúc khoảng 14:43–14:45 +07.
+Script/stub không commit, đã dọn; đây là bằng chứng thực thi phiên này, không là
+bộ test tái chạy được từ commit. Marker tổng hợp: `MARKIEACCEPT1794555829679`.
+
+Keycloak thật cấp JWT qua authorization code + PKCE của `markie_webapp` cho tài
+khoản tổng hợp mới; mật khẩu tạo ngẫu nhiên và token chỉ ở bộ nhớ, không lưu/
+in/commit. Không bật direct grants, không sửa realm/client/roles hoặc dùng JWT
+giả. Profile sync qua Gateway trả 200/1000. Request không JWT trực tiếp đến Post
+trả 401 và không gọi provider.
+
+Post thật dùng key giả, base URL `http://127.0.0.1:18908`; server stub riêng bind
+localhost và chỉ nhận đúng Bearer key giả. MongoDB/Kafka/Profile/Search/Gateway/
+Keycloak/Elasticsearch thật, không mock repository/event/security. Timeout runtime
+giữ read timeout 5000 ms; stub chờ 6500 ms ở ca timeout.
+
+| Ca HTTP qua Gateway `localhost:8888/post/create` | HTTP/code | Provider | MongoDB exact-content |
+|---|---|---:|---:|
+| false, tiếng Việt/emoji/newline/khoảng trắng giữ nguyên | 200/1000 | 1 | 1 |
+| true | 422/1015 | 1 | 0 |
+| HTTP 500, dù body có false | 503/1016 | 1 | 0 |
+| flagged sai kiểu chuỗi | 503/1016 | 1 | 0 |
+| read timeout thật | 503/1016 | 1 | 0 |
+| chỉ whitespace | 400/1017 | 0 | 0 |
+| quá 500 UTF-16 | 400/1018 | 0 | 0 |
+
+Đối chiếu input stub, MongoDB và event Kafka: content giống nhau. `/post/my-posts`
+trả đúng postId/nội dung bài đạt. Search qua Gateway HTTP 200 có đúng postId và
+content; lần poll đầu thành công, mất 736 ms từ lúc bắt đầu truy vấn search sau
+các ca API, **không phải số đo toàn bộ độ trễ Kafka**. Giới hạn poll 30 giây.
+
+Đọc topic `post.sync.events` thật từ đầu bằng console consumer có timeout 5 giây,
+lọc marker trong bộ nhớ: đúng **1 event**, content là ca cho qua; không có event
+marker của ca chặn/lỗi/quá dài. Đọc bổ sung: **0 event** có content whitespace
+invalid. Kết hợp truy vấn MongoDB trực tiếp và unit test không save/send; không
+dựa vào tìm kiếm tức thì để kết luận “không lưu”. Đường dẫn tool đúng của image
+là `/opt/bitnami/kafka/bin/kafka-console-consumer.sh`; thử `/opt/kafka/bin` không
+đọc được và không được coi là bằng chứng event.
+
+Chưa chạy toàn bộ biến thể provider của bảng Task 08 trên hệ thống thật (401/429,
+mọi dạng results/flagged sai, biên 500/emoji); các ca đó còn do bộ test tự động
+hiện có và thử nghiệm phiên trước bao phủ ở mức thấp hơn.
+
+### UI, AI thật và phần còn thiếu
+
+Inventory CUA đã gọi lại: `The browser access host is unavailable`, browsers rỗng;
+native Cốc Cốc vẫn hiện diện. Phiên trước đã xác định native browser bị chặn vì
+URL policy enforcement; không dùng đường khác để vượt chặn. **Chưa thao tác UI**.
+
+Checklist thủ công sau khi khởi động frontend/backend trong môi trường test:
+
+1. Đăng nhập tài khoản thử, mở DevTools Network lọc `/post/create`, mở composer.
+2. Provider false: nhập marker riêng, bấm Đăng; khi chờ thấy “Đang kiểm duyệt…”,
+   textarea/nút Đăng/nút đóng/backdrop bị khóa. Bấm nhanh nhiều lần: chỉ 1 request
+   (cả lúc refresh token). Thành công thêm 1 bài, đóng modal; mở lại bản nháp rỗng.
+3. Provider true: nhận 422/1015, modal và nội dung giữ nguyên; sửa nội dung, chuyển
+   stub sang false, gửi lại thành công đúng 1 lần. Không có bài tạm trong feed.
+4. Provider timeout/HTTP lỗi: 503/1016, giữ bản nháp, mở lại thao tác; thử lại khi
+   provider phục hồi. Thử mạng lỗi/response sai và xác nhận không thêm bài.
+5. Thử rỗng/whitespace, 500/501 ASCII và 250/251 emoji; kiểm tra giới hạn UTF-16.
+   API trực tiếp vẫn trả validation, không gọi provider cho dữ liệu sai.
+6. Đọc lại bài cũ, đối chiếu DB/Kafka/search cho marker mới; không coi bài cũ đã duyệt.
+
+Chưa có key OpenAI thử nghiệm ở process/User/Machine, chỉ kiểm tra presence,
+không gọi AI thật. Cấu hình tại máy bằng PowerShell trong **cùng phiên chạy Post**:
+
+```powershell
+$taskSecureKey = Read-Host 'OpenAI test key (không gửi vào chat)' -AsSecureString
+$env:OPENAI_API_KEY = [Net.NetworkCredential]::new('', $taskSecureKey).Password
+$env:OPENAI_MODERATION_BASE_URL = 'https://api.openai.com'
+$env:OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
+# Từ post/post, với JAVA_HOME/Maven đã cấu hình:
+& $taskMaven spring-boot:run
+# Sau khi dừng service:
+Remove-Item Env:OPENAI_API_KEY
+Remove-Item Env:OPENAI_MODERATION_BASE_URL
+Remove-Item Env:OPENAI_MODERATION_MODEL
+Remove-Variable taskSecureKey
+```
+
+Không chạy stub trong phiên cấu hình key thật, không in key, không đặt key vào
+frontend/.env/repo. Chạy V01–V14; V15–V20 cần fixture tổng hợp cụ thể trước.
+Ghi model/ID ca/flagged/lỗi và chặn nhầm/cho qua nhầm; không đổi policy ép kết quả.
+
+### Dọn môi trường, bàn giao hiện tại
+
+Đã dừng cả bốn backend/Gateway do phiên này tạo; probe 8081/8083/8085/8888/18908
+đều đóng. Stub tự đóng server/connections; script tạm đã dọn. Không đổi YAML,
+biến môi trường bền vững, container, dữ liệu/index có sẵn. Giữ lại dữ liệu tổng
+hợp mới: 1 tài khoản Keycloak, 1 profile, 1 post/event/search document và DB context
+test có fixture; không tự xóa. Không commit log, token/key, mã stub hoặc dữ liệu.
+
+File sửa hiện tại: Like.java, PostApplicationTests.java, README.md,
+acceptance-report.md, handoffs/task-08.md. Commit bàn giao là commit chứa cập nhật
+này, SHA được nêu ở phản hồi cuối; không push/merge/triển khai. E11000 đã giải
+quyết trên môi trường này; phần còn thiếu là UI, AI thật và các biến thể API thật
+đã liệt kê, không còn coi MongoDB là chặn hiện tại.
+
+## Lịch sử: phiên Task 08 trước commit `191c2f3`
+
 Ngày 13/11/2026, Asia/Saigon. Kết luận: **triển khai xong nhưng chưa nghiệm thu
 toàn luồng**. Unit test/build đạt không thay thế kiểm thử JWT, MongoDB, Kafka,
 search, UI và AI thật.

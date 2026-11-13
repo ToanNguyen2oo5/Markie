@@ -21,7 +21,10 @@ import java.time.Instant;
 @CompoundIndex(
         name = "uniq_post_user_like",
         def = "{'post_id': 1, 'user_id': 1}",
-        unique = true
+        unique = true,
+        // Shared development databases can also contain target_type/target_id likes.
+        // Their existing unique index owns that schema; missing post_id is not a post like.
+        partialFilter = "{'post_id': {'$exists': true}}"
 )
 public class Like {
 
