@@ -22,6 +22,12 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 app:
+  moderation:
+    api-key: ${OPENAI_API_KEY}
+    base-url: ${OPENAI_MODERATION_BASE_URL:https://api.openai.com}
+    model: ${OPENAI_MODERATION_MODEL:omni-moderation-latest}
+    connect-timeout-ms: 2000
+    read-timeout-ms: 5000
   services:
     profile:
       url: http://localhost:8081/profile

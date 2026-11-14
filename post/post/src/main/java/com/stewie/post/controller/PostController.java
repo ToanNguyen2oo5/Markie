@@ -5,6 +5,7 @@ import com.stewie.post.dto.request.PostRequest;
 import com.stewie.post.dto.response.PageResponse;
 import com.stewie.post.dto.response.PostResponse;
 import com.stewie.post.service.PostService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -19,7 +20,7 @@ public class PostController {
     PostService postService;
 
     @PostMapping("/create")
-    ApiResponse<PostResponse> create(@RequestBody PostRequest request){
+    ApiResponse<PostResponse> create(@Valid @RequestBody PostRequest request){
         return ApiResponse.<PostResponse>builder()
                 .result(postService.createPost(request))
                 .build();

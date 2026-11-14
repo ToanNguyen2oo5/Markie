@@ -9,6 +9,13 @@ interface CreatePostCardProps {
   onPostCreated: (post: PostData) => void;
 }
 
+const postErrorMessages: Record<number, string> = {
+  1015: 'Nội dung bài viết chưa phù hợp. Vui lòng chỉnh sửa và thử lại.',
+  1016: 'Chưa thể kiểm duyệt bài viết. Vui lòng thử lại sau.',
+  1017: 'Vui lòng nhập nội dung bài viết.',
+  1018: 'Nội dung bài viết không được vượt quá 500 ký tự.',
+};
+
 export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
   const { avatarUrl, fullName } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
@@ -16,19 +23,26 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    // Lock synchronously, before token refresh or React's next render.
+    if (submittingRef.current) return;
+    if (!content.trim() || content.length > 500) {
+      setError(postErrorMessages[!content.trim() ? 1017 : 1018]);
+      return;
+    }
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
 
     try {
-      await keycloak.updateToken(30);
-    } catch {
-      console.warn('Token refresh skipped');
-    }
+      try {
+        await keycloak.updateToken(30);
+      } catch {
+        console.warn('Token refresh skipped');
+      }
 
-    try {
       const res = await fetch('/post/create', {
         method: 'POST',
         headers: {
@@ -38,17 +52,29 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
         body: JSON.stringify({ content }),
       });
 
-      const data = await res.json();
-      if (res.ok && data.code === 1000) {
-        onPostCreated(data.result as PostData);
+      let body: unknown;
+      try {
+        body = await res.json();
+      } catch {
+        setError('Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại sau.');
+        return;
+      }
+      if (!body || typeof body !== 'object' || !('code' in body) || typeof body.code !== 'number') {
+        setError('Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại sau.');
+        return;
+      }
+      const data = body as { code: number; result?: PostData };
+      if (res.ok && data.code === 1000 && data.result && typeof data.result.id === 'string') {
+        onPostCreated(data.result);
         setContent('');
         setModalOpen(false);
       } else {
-        setError(data.message || 'Đăng bài thất bại');
+        setError(postErrorMessages[data.code] || 'Đăng bài thất bại. Vui lòng thử lại sau.');
       }
     } catch {
-      setError('Không thể kết nối đến máy chủ');
+      setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -86,7 +112,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !submitting && setModalOpen(false)}
+              onClick={() => !submittingRef.current && setModalOpen(false)}
               className="fixed inset-0 bg-black/70 z-50"
             />
 
@@ -103,7 +129,9 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
               <div className="relative flex items-center justify-center py-4 border-b border-[#3E4042]">
                 <h2 className="text-[#E4E6EB] font-bold text-[17px]">Tạo bài viết</h2>
                 <button
-                  onClick={() => !submitting && setModalOpen(false)}
+                  onClick={() => !submittingRef.current && setModalOpen(false)}
+                  disabled={submitting}
+                  aria-label="Đóng"
                   className="absolute right-4 w-9 h-9 rounded-full bg-[#3A3B3C] hover:bg-[#4E4F50] flex items-center justify-center text-[#E4E6EB] transition-colors cursor-pointer"
                 >
                   <X weight="bold" className="w-5 h-5" />
@@ -124,7 +152,8 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
                 <textarea
                   ref={textareaRef}
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => { if (!submittingRef.current) setContent(e.target.value); }}
+                  disabled={submitting}
                   placeholder="Bạn đang nghĩ gì thế?"
                   rows={5}
                   className="w-full bg-transparent text-[#E4E6EB] placeholder-[#B0B3B8] text-[18px] outline-none resize-none leading-relaxed"
@@ -133,7 +162,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
 
               {/* Error message */}
               {error && (
-                <div className="mx-4 mb-3 bg-red-900/30 border border-red-800 text-red-300 text-sm rounded-lg px-3 py-2">
+                <div role="alert" className="mx-4 mb-3 bg-red-900/30 border border-red-800 text-red-300 text-sm rounded-lg px-3 py-2">
                   {error}
                 </div>
               )}
@@ -151,7 +180,7 @@ export function CreatePostCard({ onPostCreated }: CreatePostCardProps) {
                   {submitting ? (
                     <>
                       <ArrowClockwise className="w-4 h-4 animate-spin" />
-                      Đang đăng...
+                      Đang kiểm duyệt…
                     </>
                   ) : 'Đăng'}
                 </button>
